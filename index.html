@@ -125,31 +125,10 @@
 
     <!-- BUY ME A COFFEE (PARENT GATE) -->
     <div id="parent-footer">
-        <div class="bmc-button" onclick="openPaymentLink('https://buymeacoffee.com/m007')">
+        <a href="https://buymeacoffee.com/m007" target="_blank" class="bmc-button">
             ☕ If Adi's Play Hub saved you some time or kept your toddler smiling safely, consider buying me a coffee!
-        </div>
+        </a>
     </div>
-
-    <script>
-        // --- PARENT GATE LOGIC ---
-        function openPaymentLink(url) {
-            // Generate a simple math problem
-            const num1 = Math.floor(Math.random() * 5) + 1;
-            const num2 = Math.floor(Math.random() * 5) + 1;
-            const answer = prompt(`Parent Check: What is ${num1} + ${num2}?`);
-            
-            // Check if they answered correctly (and didn't hit cancel)
-            if (answer !== null && parseInt(answer.trim()) === (num1 + num2)) {
-                // If you haven't replaced YOUR_LINK_HERE yet, prevent an empty window
-                if(url.includes(https://buymeacoffee.com/m007')) {
-                    alert("Payment link not set up yet! Add your Razorpay or BuyMeACoffee link in the code.");
-                } else {
-                    window.open(url, '_blank');
-                }
-            } else if (answer !== null) {
-                alert("Oops! Incorrect answer. Returning to hub.");
-            }
-        }
-    </script>
+    
 </body>
 </html>
