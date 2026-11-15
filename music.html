@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Music Box</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            background-color: #f3e5f5; /* Light purple theme */
+            font-family: 'Comic Sans MS', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        /* --- START OVERLAY --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(243, 229, 245, 0.95);
+            display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        #start-overlay button {
+            font-size: 3rem; padding: 20px 40px; background: #9b59b6; color: white;
+            border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 8px 0 #8e44ad;
+        }
+
+        /* --- BACK BUTTON --- */
+        #back-btn {
+            position: fixed; top: 10px; left: 10px; z-index: 100;
+            padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: #333;
+        }
+        #back-btn:active { background: rgba(0,0,0,0.2); }
+
+        /* --- GAME ELEMENTS --- */
+        #game-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        .pop-element {
+            position: absolute; display: flex; align-items: center; justify-content: center;
+            animation: floatUp 1s ease-out forwards; pointer-events: none;
+        }
+        .emoji { font-size: 8rem; filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.2)); }
+        
+        /* The expanding color ripple */
+        .ripple {
+            position: absolute; border-radius: 50%;
+            animation: expandRipple 0.8s ease-out forwards;
+            pointer-events: none; opacity: 0.6; z-index: -1;
+        }
+
+        @keyframes floatUp { 
+            0% { transform: scale(0) translateY(20px); opacity: 0; } 
+            20% { transform: scale(1.2) translateY(0); opacity: 1; }
+            100% { transform: scale(1) translateY(-100px); opacity: 0; } 
+        }
+        
+        @keyframes expandRipple {
+            0% { width: 0; height: 0; opacity: 0.6; }
+            100% { width: 400px; height: 400px; opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Start Button unlocks audio -->
+    <div id="start-overlay" onclick="startGame()">
+        <button>Tap to Start!</button>
+    </div>
+    
+    <!-- Native Double Click to exit -->
+    <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+        Double-Tap / Esc to Exit
+    </button>
+    
+    <!-- Main game canvas clicks -->
+    <div id="game-area" onclick="spawn(event.clientX, event.clientY)"></div>
+
+    <script>
+        const instruments = ['🎵', '🎶', '🎹', '🎸', '🥁', '🎷', '🎺', '🎻', '🔔'];
+        const colors = ['#ff4d4d', '#ff9f43', '#1dd1a1', '#54a0ff', '#5f27cd', '#ff6b81', '#00cec9'];
+        
+        // C Major Pentatonic Scale (Always sounds harmonious when mashed together)
+        const pentatonicScale = [
+            261.63, // C4
+            293.66, // D4
+            329.63, // E4
+            392.00, // G4
+            440.00, // A4
+            523.25, // C5
+            587.33, // D5
+            659.25, // E5
+            783.99, // G5
+            880.00  // A5
+        ];
+        
+        let audioCtx = null;
+        let active = false;
+
+        function startGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            active = true;
+            
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(AudioContext) {
+                audioCtx = new AudioContext();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if(!active) return;
+            if(e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if(e.key === ' ') { document.getElementById('game-area').innerHTML = ''; return; }
+            if(e.repeat) return;
+            
+            // Randomize position for keyboard presses
+            const x = Math.max(100, Math.random() * (window.innerWidth - 200));
+            const y = Math.max(100, Math.random() * (window.innerHeight - 200));
+            
+            // Map keyboard character codes to the pentatonic scale
+            const charCode = e.key.charCodeAt(0) || 0;
+            const noteIndex = charCode % pentatonicScale.length;
+            
+            spawn(x, y, noteIndex);
+        });
+
+        function spawn(x, y, forcedNoteIndex = null) {
+            if(!active) return;
+            
+            const area = document.getElementById('game-area');
+            
+            // Clean up old elements to keep performance high
+            if(area.children.length > 20) {
+                area.removeChild(area.firstChild);
+            }
+            
+            const instrument = instruments[Math.floor(Math.random() * instruments.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // 1. Create the expanding color ripple
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            ripple.style.background = color;
+            ripple.style.left = (x) + 'px';
+            ripple.style.top = (y) + 'px';
+            ripple.style.transform = 'translate(-50%, -50%)'; // Center the ripple on the click
+            area.appendChild(ripple);
+
+            // 2. Create the floating emoji
+            const div = document.createElement('div');
+            div.className = 'pop-element';
+            div.style.left = (x - 60) + 'px';
+            div.style.top = (y - 60) + 'px';
+            div.innerHTML = `<div class="emoji">${instrument}</div>`;
+            area.appendChild(div);
+            
+            // Play a harmonious chime
+            if(audioCtx) {
+                try {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    
+                    osc.type = 'sine';
+                    
+                    // If forcedNoteIndex is provided (keyboard), use it. 
+                    // Otherwise (mouse/touch), calculate note based on horizontal X position on screen
+                    let noteFreq;
+                    if (forcedNoteIndex !== null) {
+                        noteFreq = pentatonicScale[forcedNoteIndex];
+                    } else {
+                        // Map the X click coordinate to one of the 10 pentatonic notes (Left = Low, Right = High)
+                        const screenPercentage = Math.max(0, Math.min(1, x / window.innerWidth));
+                        const calculatedIndex = Math.floor(screenPercentage * pentatonicScale.length);
+                        // Prevent out of bounds
+                        const safeIndex = Math.min(calculatedIndex, pentatonicScale.length - 1);
+                        noteFreq = pentatonicScale[safeIndex];
+                    }
+                    
+                    osc.frequency.setValueAtTime(noteFreq, audioCtx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.0);
+                    
+                    osc.start(); osc.stop(audioCtx.currentTime + 1.0);
+                } catch(e) { console.log(e); }
+            }
+            
+            // Cleanup DOM elements after animation completes
+            setTimeout(() => {
+                if(ripple.parentNode) ripple.parentNode.removeChild(ripple);
+                if(div.parentNode) div.parentNode.removeChild(div);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

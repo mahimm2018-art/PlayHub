@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Play Hub</title>
+    <style>
+        :root {
+            --bg-color: #fdfbf7;
+        }
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            background-color: var(--bg-color);
+            font-family: 'Comic Sans MS', 'Nunito', 'Segoe UI', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        /* --- MENU UI --- */
+        #menu-screen {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            height: 100%; background: #fffbe6;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10;
+        }
+        h1 { 
+            font-size: 3rem; color: #ff6b81; margin-bottom: 5px; 
+            text-shadow: 2px 2px 0px #ffeaa7; text-align: center;
+        }
+        .subtitle { 
+            font-size: 1.2rem; color: #747d8c; margin-bottom: 30px; font-weight: bold; 
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 180px));
+            gap: 15px; max-width: 900px; width: 90%; justify-content: center;
+        }
+        
+        .tile {
+            border-radius: 24px; padding: 20px 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1); border: 4px solid rgba(255,255,255,0.5);
+        }
+        .tile:hover { transform: translateY(-5px); box-shadow: 0 12px 0 rgba(0,0,0,0.15); }
+        .tile:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        
+        .tile-icon { font-size: 4rem; margin-bottom: 10px; filter: drop-shadow(2px 4px 0px rgba(0,0,0,0.15)); }
+        .tile-title { font-size: 1.2rem; font-weight: bold; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
+
+        /* Tile Colors */
+        .bg-red { background: #ff4757; }
+        .bg-blue { background: #1e90ff; }
+        .bg-green { background: #2ed573; }
+        .bg-orange { background: #ffa502; }
+        .bg-purple { background: #9b59b6; }
+        .bg-teal { background: #00cec9; }
+        .bg-dark { background: #2f3542; }
+        .bg-pink { background: #ff6b81; }
+
+        /* --- FOOTER & BUY ME A COFFEE --- */
+        #parent-footer {
+            position: absolute; 
+            bottom: 20px; 
+            width: 100%; 
+            display: flex; 
+            justify-content: center; 
+            z-index: 20;
+        }
+        .bmc-button {
+            background-color: #FFDD00; 
+            color: #000000; 
+            padding: 10px 20px; 
+            border-radius: 30px; 
+            font-size: 1rem; 
+            font-weight: bold; 
+            text-decoration: none; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .bmc-button:hover { transform: translateY(-3px); }
+        .bmc-button:active { transform: translateY(1px); }
+    </style>
+</head>
+<body>
+
+    <!-- MAIN MENU -->
+    <div id="menu-screen">
+        <h1>Adi's Play Hub</h1>
+        <div class="subtitle">Ad-Free & Safe. Press a tile!</div>
+        
+        <div class="grid">
+            <div class="tile bg-red" onclick="window.location.href='abc.html'">
+                <div class="tile-icon">🍎</div><div class="tile-title">ABCs</div>
+            </div>
+            <div class="tile bg-blue" onclick="window.location.href='numbers.html'">
+                <div class="tile-icon">🔢</div><div class="tile-title">Numbers</div>
+            </div>
+            <div class="tile bg-green" onclick="window.location.href='animals.html'">
+                <div class="tile-icon">🐶</div><div class="tile-title">Animals</div>
+            </div>
+            <div class="tile bg-orange" onclick="window.location.href='vehicles.html'">
+                <div class="tile-icon">🚂</div><div class="tile-title">Vehicles</div>
+            </div>
+            <div class="tile bg-purple" onclick="window.location.href='music.html'">
+                <div class="tile-icon">🎹</div><div class="tile-title">Music Box</div>
+            </div>
+            <div class="tile bg-teal" onclick="window.location.href='balls.html'">
+                <div class="tile-icon">🏀</div><div class="tile-title">Ball Pit</div>
+            </div>
+            <div class="tile bg-dark" onclick="window.location.href='fireworks.html'">
+                <div class="tile-icon">🎆</div><div class="tile-title">Night Sky</div>
+            </div>
+            <div class="tile bg-pink" onclick="window.location.href='ripples.html'">
+                <div class="tile-icon">💧</div><div class="tile-title">Water</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BUY ME A COFFEE (PARENT GATE) -->
+    <div id="parent-footer">
+        <div class="bmc-button" onclick="openPaymentLink('YOUR_LINK_HERE')">
+            ☕ Buy me a coffee
+        </div>
+    </div>
+
+    <script>
+        // --- PARENT GATE LOGIC ---
+        function openPaymentLink(url) {
+            // Generate a simple math problem
+            const num1 = Math.floor(Math.random() * 5) + 1;
+            const num2 = Math.floor(Math.random() * 5) + 1;
+            const answer = prompt(`Parent Check: What is ${num1} + ${num2}?`);
+            
+            // Check if they answered correctly (and didn't hit cancel)
+            if (answer !== null && parseInt(answer.trim()) === (num1 + num2)) {
+                // If you haven't replaced YOUR_LINK_HERE yet, prevent an empty window
+                if(url === 'YOUR_LINK_HERE') {
+                    alert("Payment link not set up yet! Add your Razorpay or BuyMeACoffee link in the code.");
+                } else {
+                    window.open(url, '_blank');
+                }
+            } else if (answer !== null) {
+                alert("Oops! Incorrect answer. Returning to hub.");
+            }
+        }
+    </script>
+</body>
+</html>

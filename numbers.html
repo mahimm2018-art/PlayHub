@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Numbers</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            background-color: #fdfbf7;
+            font-family: 'Comic Sans MS', 'Nunito', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        #game-area { width: 100%; height: 100%; position: relative; }
+
+        /* --- START SCREEN OVERLAY --- */
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(253, 251, 247, 0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 200; cursor: pointer;
+        }
+        .start-btn {
+            background: #ff4d4d; color: white; font-size: 3rem; font-weight: bold;
+            padding: 20px 50px; border-radius: 50px; box-shadow: 0 10px 0 #c23616;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); }
+        }
+
+        .parent-gate {
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(0,0,0,0.1); color: #555; padding: 10px 15px;
+            border-radius: 8px; font-size: 0.9rem; z-index: 100;
+            border: 2px solid transparent; transition: all 0.2s; cursor: pointer;
+        }
+        .parent-gate:active { background: rgba(0,0,0,0.2); }
+
+        .pop-element {
+            position: absolute; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            pointer-events: none;
+        }
+
+        .pop-num { font-size: 10rem; font-weight: bold; line-height: 0.9; text-shadow: 4px 4px 0 #fff, -2px -2px 0 #fff; }
+        .pop-count { 
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; 
+            max-width: 350px; background: white; padding: 15px 25px; 
+            border-radius: 30px; margin-top: 15px; border: 4px solid; box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+        .count-item { font-size: 3rem; line-height: 1; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1)); }
+
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <div class="start-btn">Tap to Start!</div>
+    </div>
+
+    <div id="game-area">
+        <div class="parent-gate" id="back-btn">Hold 'Shift + Esc' or Long Press here for Menu</div>
+    </div>
+
+    <script>
+        const startScreen = document.getElementById('start-screen');
+        const gameArea = document.getElementById('game-area');
+        const backBtn = document.getElementById('back-btn');
+
+        const colors = ['#ff4d4d', '#ff9f43', '#1dd1a1', '#54a0ff', '#5f27cd', '#ff6b81', '#00cec9'];
+        const numEmojis = ['🍓', '🎈', '⭐', '🚗', '🐸', '🍎', '🖍️', '🧸', '🍪', '🐶', '🏀', '🚂'];
+
+        let audioCtx = null;
+        let isGameActive = false;
+
+        // --- UNLOCK & START GAME ---
+        startScreen.addEventListener('click', () => {
+            // Unlock Audio API
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }
+            // Unlock Speech API silently
+            if ('speechSynthesis' in window) {
+                let silentUtterance = new SpeechSynthesisUtterance('');
+                window.speechSynthesis.speak(silentUtterance);
+            }
+            
+            startScreen.style.display = 'none';
+            isGameActive = true;
+        });
+
+        // --- PARENT GATE (BACK TO MENU) ---
+        let pressTimer;
+        function goBack() { window.location.href = 'index.html'; }
+        
+        backBtn.addEventListener('touchstart', (e) => { e.preventDefault(); pressTimer = setTimeout(goBack, 1500); });
+        backBtn.addEventListener('touchend', (e) => { e.preventDefault(); clearTimeout(pressTimer); });
+        backBtn.addEventListener('mousedown', () => { pressTimer = setTimeout(goBack, 1500); });
+        backBtn.addEventListener('mouseup', () => clearTimeout(pressTimer));
+        backBtn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+
+        // --- INPUT HANDLING (KEYBOARD) ---
+        window.addEventListener('keydown', (e) => {
+            if (!isGameActive) return;
+            if (e.shiftKey && e.key === 'Escape') { goBack(); return; }
+            if (e.repeat) return; 
+
+            if (e.key === ' ') { 
+                document.querySelectorAll('.pop-element').forEach(el => el.remove());
+                return; 
+            } 
+
+            const key = e.key;
+            const x = Math.max(150, Math.random() * (window.innerWidth - 300));
+            const y = Math.max(150, Math.random() * (window.innerHeight - 350));
+
+            if (/^[0-9]$/.test(key)) {
+                let num = parseInt(key);
+                if (num === 0) num = 10;
+                triggerNumber(num, x, y);
+            } else if (/^[a-zA-Z]$/.test(key)) {
+                triggerNumber(Math.floor(Math.random() * 10) + 1, x, y);
+            }
+        });
+
+        // --- INPUT HANDLING (TOUCH/CLICK) ---
+        window.addEventListener('mousedown', (e) => {
+            if (!isGameActive || e.target === backBtn) return;
+            triggerNumber(Math.floor(Math.random() * 10) + 1, e.clientX, e.clientY);
+        });
+
+        window.addEventListener('touchstart', (e) => {
+            if (!isGameActive || e.target === backBtn) return;
+            const touch = e.touches[0];
+            triggerNumber(Math.floor(Math.random() * 10) + 1, touch.clientX, touch.clientY);
+        }, { passive: true });
+
+        // --- GAME LOGIC ---
+        function triggerNumber(num, x, y) {
+            document.querySelectorAll('.pop-element').forEach(elem => elem.remove());
+
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const emoji = numEmojis[Math.floor(Math.random() * numEmojis.length)];
+            
+            let emojiHtml = '';
+            for(let i = 0; i < num; i++) emojiHtml += `<div class="count-item">${emoji}</div>`;
+
+            const el = document.createElement('div');
+            el.className = 'pop-element';
+            el.style.left = `${x - 150}px`; 
+            el.style.top = `${y - 150}px`; 
+            el.innerHTML = `
+                <div class="pop-num" style="color:${color}">${num}</div>
+                <div class="pop-count" style="border-color:${color}">${emojiHtml}</div>
+            `;
+            
+            gameArea.appendChild(el);
+            
+            // Wrap speech and audio in try/catch so a failure doesn't crash the visuals
+            try {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    setTimeout(() => {
+                        const utterance = new SpeechSynthesisUtterance(num.toString());
+                        utterance.pitch = 1.4; utterance.rate = 0.9;  
+                        window.speechSynthesis.speak(utterance);
+                    }, 20);
+                }
+                playChime(num);
+            } catch (err) {
+                console.log("Audio skipped", err);
+            }
+        }
+
+        function playChime(num) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400 + (num * 20), audioCtx.currentTime); 
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.5);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Water Ripples</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            background-color: #0097e6; /* Deep calm water blue */
+            font-family: 'Comic Sans MS', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        /* --- START OVERLAY --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 151, 230, 0.95);
+            display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        #start-overlay button {
+            font-size: 3rem; padding: 20px 40px; background: #00a8ff; color: white;
+            border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 8px 0 #007bb5;
+        }
+
+        /* --- BACK BUTTON --- */
+        #back-btn {
+            position: fixed; top: 10px; left: 10px; z-index: 100;
+            padding: 10px 15px; background: rgba(255,255,255,0.2); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: white;
+        }
+        #back-btn:active { background: rgba(255,255,255,0.4); }
+
+        /* --- GAME CANVAS --- */
+        #game-canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: block; cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Start Button unlocks audio -->
+    <div id="start-overlay" onclick="startGame()">
+        <button>Tap to Start!</button>
+    </div>
+    
+    <!-- Native Double Click to exit -->
+    <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+        Double-Tap / Esc to Exit
+    </button>
+    
+    <!-- High Performance Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Responsive canvas sizing
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const seaCreatures = ['🐟', '🐠', '🐡', '🐙', '🦀', '🐬', '🐳', '🦑', '🐢', '🪼', '🦐', '🐚'];
+        
+        let ripples = [];
+        let fishes = [];
+        
+        let audioCtx = null;
+        let active = false;
+        let animationFrameId;
+
+        function startGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            active = true;
+            
+            // Wake up Audio Context
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(AudioContext) {
+                audioCtx = new AudioContext();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+            }
+            
+            loop();
+        }
+
+        // --- INPUT HANDLING ---
+        document.addEventListener('keydown', (e) => {
+            if(!active) return;
+            if(e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if(e.key === ' ') { 
+                ripples = []; fishes = []; 
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                return; 
+            }
+            if(e.repeat) return;
+            
+            const x = Math.max(80, Math.random() * (canvas.width - 160));
+            const y = Math.max(80, Math.random() * (canvas.height - 160));
+            spawn(x, y);
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if(!active) return;
+            spawn(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if(!active) return;
+            e.preventDefault(); 
+            for (let i = 0; i < e.touches.length; i++) {
+                spawn(e.touches[i].clientX, e.touches[i].clientY);
+            }
+        }, { passive: false });
+
+        // --- GAME LOGIC ---
+        function spawn(x, y) {
+            // Add an expanding water ripple
+            ripples.push({
+                x: x, y: y,
+                radius: 10,
+                alpha: 1.0
+            });
+            
+            // Add an inner ripple for a realistic splash effect
+            ripples.push({
+                x: x, y: y,
+                radius: 0,
+                alpha: 0.8
+            });
+
+            // Add a floating sea creature
+            const creature = seaCreatures[Math.floor(Math.random() * seaCreatures.length)];
+            fishes.push({
+                x: x, y: y,
+                emoji: creature,
+                life: 1.0,
+                floatSpeed: Math.random() * 2 + 1, // How fast it floats up
+                wobbleOffset: Math.random() * Math.PI * 2 // For sideways floating wobble
+            });
+
+            playWaterSound();
+        }
+
+        function loop() {
+            if (!active) return;
+            
+            // Clear the canvas cleanly for water (no trailing effect needed)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Ripples
+            for(let i = ripples.length - 1; i >= 0; i--) {
+                let r = ripples[i];
+                
+                r.radius += 4; // Expand
+                r.alpha -= 0.015; // Fade out
+                
+                if (r.radius > 0) {
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, r.alpha)})`;
+                    ctx.lineWidth = 4 + (r.alpha * 4); // Line gets thinner as it fades
+                    ctx.stroke();
+                }
+                
+                if(r.alpha <= 0) ripples.splice(i, 1);
+            }
+
+            // Draw Fishes
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for(let i = fishes.length - 1; i >= 0; i--) {
+                let f = fishes[i];
+                
+                f.y -= f.floatSpeed; // Float upward
+                f.life -= 0.008; // Fade out slowly
+                
+                // Calculate wobble (sine wave based on y position)
+                let wobbleX = f.x + Math.sin(f.y * 0.05 + f.wobbleOffset) * 15;
+
+                ctx.font = '6rem Arial'; // Huge emojis
+                ctx.globalAlpha = Math.max(0, f.life);
+                
+                // Add a slight drop shadow underwater
+                ctx.shadowColor = 'rgba(0,0,0,0.2)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 5;
+                
+                ctx.fillText(f.emoji, wobbleX, f.y);
+                
+                // Reset shadows and alpha
+                ctx.shadowColor = 'transparent';
+                ctx.globalAlpha = 1.0; 
+                
+                if(f.life <= 0) fishes.splice(i, 1);
+            }
+            
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        // --- AUDIO ---
+        function playWaterSound() {
+            if(!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                
+                osc.type = 'sine';
+                
+                // Real water drops have a rapid upward frequency sweep (a "bloop")
+                // Randomize the base frequency so they don't all sound identical
+                const baseFreq = 300 + Math.random() * 200; 
+                
+                osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq + 400, audioCtx.currentTime + 0.15);
+                
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                
+                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) { console.log(e); }
+        }
+    </script>
+</body>
+</html>

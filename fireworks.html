@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Night Sky</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            background-color: #0b0c10; /* Deep night sky black */
+            font-family: 'Comic Sans MS', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        /* --- START OVERLAY --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 12, 16, 0.95);
+            display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        #start-overlay button {
+            font-size: 3rem; padding: 20px 40px; background: #f1c40f; color: #333;
+            border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 8px 0 #f39c12;
+        }
+
+        /* --- BACK BUTTON --- */
+        #back-btn {
+            position: fixed; top: 10px; left: 10px; z-index: 100;
+            padding: 10px 15px; background: rgba(255,255,255,0.15); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: white;
+        }
+        #back-btn:active { background: rgba(255,255,255,0.3); }
+
+        /* --- GAME CANVAS --- */
+        #game-canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: block; cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Start Button unlocks audio -->
+    <div id="start-overlay" onclick="startGame()">
+        <button>Tap to Start!</button>
+    </div>
+    
+    <!-- Native Double Click to exit -->
+    <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+        Double-Tap / Esc to Exit
+    </button>
+    
+    <!-- High Performance Particle Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Responsive canvas sizing
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const colors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#ff69b4', '#00cec9', '#f1c40f'];
+        let particles = [];
+        
+        let audioCtx = null;
+        let active = false;
+        let animationFrameId;
+
+        function startGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            active = true;
+            
+            // Wake up Audio
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(AudioContext) {
+                audioCtx = new AudioContext();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+            }
+            
+            // Start the animation loop
+            loop();
+        }
+
+        // --- INPUT HANDLING ---
+        document.addEventListener('keydown', (e) => {
+            if(!active) return;
+            if(e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if(e.key === ' ') { particles = []; ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
+            if(e.repeat) return;
+            
+            const x = Math.max(50, Math.random() * (canvas.width - 100));
+            const y = Math.max(50, Math.random() * (canvas.height - 100));
+            spawn(x, y);
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if(!active) return;
+            spawn(e.clientX, e.clientY);
+        });
+
+        // Touch support for canvas
+        canvas.addEventListener('touchstart', (e) => {
+            if(!active) return;
+            e.preventDefault(); // prevents mouse emulation double-firing
+            for (let i = 0; i < e.touches.length; i++) {
+                spawn(e.touches[i].clientX, e.touches[i].clientY);
+            }
+        }, { passive: false });
+
+        // --- FIREWORK PARTICLE LOGIC ---
+        function spawn(x, y) {
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const particleCount = 30 + Math.floor(Math.random() * 20); // 30 to 50 particles per burst
+            
+            for(let i = 0; i < particleCount; i++) {
+                // Calculate explosion physics (circular spread)
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 2; 
+                
+                particles.push({
+                    x: x, 
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1.0,           // 100% opacity
+                    decay: Math.random() * 0.02 + 0.01, // How fast it fades
+                    color: color,
+                    size: Math.random() * 3 + 2
+                });
+            }
+
+            playPopSound();
+        }
+
+        function loop() {
+            if (!active) return;
+            
+            // Create the trailing effect by painting a semi-transparent black rectangle over the canvas
+            ctx.fillStyle = 'rgba(11, 12, 16, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particles
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                
+                // Physics
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15; // Gravity pulling particles down
+                p.life -= p.decay; // Fade out
+                
+                // Draw
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                
+                // Use global alpha for smooth fading
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fill();
+                ctx.globalAlpha = 1.0; // Reset alpha
+                
+                // Remove dead particles
+                if(p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        // --- AUDIO ---
+        function playPopSound() {
+            if(!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                
+                // A quick, descending "pew" sound like a distant firework
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600 + Math.random()*200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } catch(e) { console.log(e); }
+        }
+    </script>
+</body>
+</html>

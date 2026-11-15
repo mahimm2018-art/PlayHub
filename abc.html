@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Classic Alphabet Fun</title>
+    <!-- Playful, rounded font -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for a full-screen, toddler-proof layout */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* No scrolling */
+            background-color: #e0f7fa; /* Soft cyan background */
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none; /* Prevent pinch-zoom and swipe-scroll */
+            user-select: none; /* Prevent accidental text highlighting */
+            -webkit-user-select: none;
+            transition: background-color 0.5s ease;
+        }
+
+        /* Top Title UI */
+        #header {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #title {
+            font-size: clamp(2rem, 5vw, 4rem);
+            color: #ff5252;
+            margin: 0;
+            text-shadow: 2px 2px 0px #fff, 0px 4px 10px rgba(0,0,0,0.1);
+            animation: bounce 2s infinite;
+        }
+
+        #subtitle {
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            color: #00796b;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+
+        /* Container for the active letter display */
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The dynamic letter card */
+        .letter-display {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* Animation: Pop in, stay for a bit, then fade out */
+            animation: 
+                popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+                fadeOut 0.8s ease-in 4s forwards;
+            pointer-events: none;
+        }
+
+        .giant-letter {
+            font-size: clamp(8rem, 30vh, 20rem);
+            font-weight: 700;
+            line-height: 1;
+            margin: 0;
+            text-shadow: 4px 6px 0px rgba(255,255,255,0.8), 0px 10px 20px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .emoji {
+            font-size: clamp(5rem, 20vh, 12rem);
+            filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.2));
+        }
+
+        .word {
+            font-size: clamp(3rem, 8vh, 6rem);
+            font-weight: 500;
+            color: #333;
+            margin-top: 10px;
+            text-transform: capitalize;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px 40px;
+            border-radius: 50px;
+            box-shadow: 0px 8px 20px rgba(0,0,0,0.1);
+            border: 4px solid #fff;
+        }
+
+        /* Bouncy title effect */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Bouncy pop-in effect */
+        @keyframes popIn {
+            0% { transform: scale(0.2) translateY(50px) rotate(-10deg); opacity: 0; }
+            70% { transform: scale(1.1) translateY(-10px) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
+        }
+
+        /* Smooth fade out to clean the screen */
+        @keyframes fadeOut {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <h1 id="title">A B C Fun!</h1>
+        <div id="subtitle">Press a key or tap the screen!</div>
+    </div>
+
+    <div id="game-area">
+        <!-- Letters will be dynamically injected here -->
+    </div>
+
+    <script>
+        // Classic English dictionary with emojis
+        const alphabetData = {
+            'A': { word: 'Apple', emoji: '🍎' },
+            'B': { word: 'Ball', emoji: '⚽' },
+            'C': { word: 'Cat', emoji: '🐱' },
+            'D': { word: 'Dog', emoji: '🐶' },
+            'E': { word: 'Elephant', emoji: '🐘' },
+            'F': { word: 'Fish', emoji: '🐟' },
+            'G': { word: 'Grapes', emoji: '🍇' },
+            'H': { word: 'Hat', emoji: '🎩' },
+            'I': { word: 'Ice Cream', emoji: '🍦' },
+            'J': { word: 'Juice', emoji: '🧃' },
+            'K': { word: 'Kite', emoji: '🪁' },
+            'L': { word: 'Lion', emoji: '🦁' },
+            'M': { word: 'Monkey', emoji: '🐒' },
+            'N': { word: 'Nest', emoji: '🪹' },
+            'O': { word: 'Orange', emoji: '🍊' },
+            'P': { word: 'Pig', emoji: '🐷' },
+            'Q': { word: 'Queen', emoji: '👑' },
+            'R': { word: 'Rabbit', emoji: '🐰' },
+            'S': { word: 'Sun', emoji: '☀️' },
+            'T': { word: 'Train', emoji: '🚂' },
+            'U': { word: 'Umbrella', emoji: '☂️' },
+            'V': { word: 'Van', emoji: '🚐' },
+            'W': { word: 'Watermelon', emoji: '🍉' },
+            'X': { word: 'Xylophone', emoji: '🎹' },
+            'Y': { word: 'Yak', emoji: '🐂' },
+            'Z': { word: 'Zebra', emoji: '🦓' }
+        };
+
+        const letters = Object.keys(alphabetData);
+        const gameArea = document.getElementById('game-area');
+        const subtitle = document.getElementById('subtitle');
+        
+        // Synth engine for text-to-speech
+        const synth = window.speechSynthesis;
+
+        // Generate a random bright color for the giant letters
+        function getRandomColor() {
+            const colors = [
+                '#FF3B30', // Red
+                '#FF9500', // Orange
+                '#FFCC00', // Yellow
+                '#4CD964', // Green
+                '#5AC8FA', // Light Blue
+                '#007AFF', // Blue
+                '#5856D6', // Purple
+                '#FF2D55'  // Pink
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        function getRandomBgColor() {
+             const bgColors = [
+                '#ffebee', '#fce4ec', '#f3e5f5', '#e8eaf6', 
+                '#e3f2fd', '#e0f2f1', '#e8f5e9', '#fbf8cc', '#fff3e0'
+            ];
+            return bgColors[Math.floor(Math.random() * bgColors.length)];
+        }
+
+        // Play the speech for the letter and word
+        function speak(letter, word) {
+            // Cancel any currently playing speech so mashing the keyboard doesn't create a backlog
+            if (synth.speaking) {
+                synth.cancel();
+            }
+
+            // Create utterance (e.g., "A... Apple")
+            const utterance = new SpeechSynthesisUtterance(`${letter}. ${word}`);
+            
+            // Adjust rate and pitch for a toddler-friendly sound
+            utterance.rate = 0.85; // Slightly slower
+            utterance.pitch = 1.3; // Slightly higher/friendly
+
+            synth.speak(utterance);
+        }
+
+        // Core logic to display the letter
+        function triggerLetter(letter) {
+            // Hide the instruction subtitle after first interaction
+            if (subtitle.style.display !== 'none') {
+                subtitle.style.display = 'none';
+            }
+
+            // Ensure uppercase
+            letter = letter.toUpperCase();
+            
+            // Validate it's an actual mapped letter
+            if (!alphabetData[letter]) return;
+
+            const data = alphabetData[letter];
+            
+            // Change background color for visual stimulation
+            document.body.style.backgroundColor = getRandomBgColor();
+
+            // Clear previous letters to keep the screen focused on one thing (toddler friendly)
+            gameArea.innerHTML = '';
+
+            // Create the container
+            const displayEl = document.createElement('div');
+            displayEl.className = 'letter-display';
+
+            // Create the Giant Letter and Emoji row
+            const topRowEl = document.createElement('div');
+            topRowEl.className = 'giant-letter';
+            topRowEl.style.color = getRandomColor();
+            
+            const textNode = document.createTextNode(letter);
+            const emojiEl = document.createElement('span');
+            emojiEl.className = 'emoji';
+            emojiEl.innerText = data.emoji;
+            
+            topRowEl.appendChild(textNode);
+            topRowEl.appendChild(emojiEl);
+
+            // Create the Word
+            const wordEl = document.createElement('div');
+            wordEl.className = 'word';
+            wordEl.innerText = data.word;
+
+            // Append to DOM
+            displayEl.appendChild(topRowEl);
+            displayEl.appendChild(wordEl);
+            gameArea.appendChild(displayEl);
+
+            // Audibly speak it
+            speak(letter, data.word);
+
+            // Clean up the DOM node after the CSS fadeOut animation finishes (0.5s in + 4s wait + 0.8s fade = ~5.3s)
+            setTimeout(() => {
+                if (gameArea.contains(displayEl)) {
+                    gameArea.removeChild(displayEl);
+                }
+            }, 5500);
+        }
+
+        // 1. Listen for Keyboard Presses (A-Z)
+        window.addEventListener('keydown', (e) => {
+            // Disable default behaviors to prevent toddler from scrolling, finding, closing tabs, etc.
+            if ([32, 37, 38, 39, 40].includes(e.keyCode)) {
+                e.preventDefault();
+            }
+            
+            // Ignore key holding repeats
+            if (e.repeat) return;
+
+            // Check if the pressed key is a letter
+            const key = e.key;
+            if (/^[a-zA-Z]$/.test(key)) {
+                triggerLetter(key);
+            } else {
+                // If they press a random key like Spacebar or numbers, pick a random letter
+                const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+                triggerLetter(randomLetter);
+            }
+        });
+
+        // 2. Listen for Screen Taps/Clicks (Random Letter)
+        window.addEventListener('pointerdown', (e) => {
+            // Only trigger on primary touch/click
+            if (e.isPrimary) {
+                const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+                triggerLetter(randomLetter);
+            }
+        });
+
+        // Initialize voices early so they are loaded when first clicked
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => synth.getVoices();
+        }
+
+    </script>
+</body>
+</html>

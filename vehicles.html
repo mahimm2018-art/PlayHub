@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Vehicles</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            /* Light sky blue background for vehicles */
+            background-color: #e0f7fa; font-family: 'Comic Sans MS', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+
+        /* --- START OVERLAY --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(224, 247, 250, 0.95);
+            display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        #start-overlay button {
+            font-size: 3rem; padding: 20px 40px; background: #00bcd4; color: white;
+            border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 8px 0 #00838f;
+        }
+
+        /* --- BACK BUTTON --- */
+        #back-btn {
+            position: fixed; top: 10px; left: 10px; z-index: 100;
+            padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: #333;
+        }
+        #back-btn:active { background: rgba(0,0,0,0.2); }
+
+        /* --- GAME ELEMENTS --- */
+        #game-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        .pop-element {
+            position: absolute; display: flex; flex-direction: column; align-items: center;
+            /* Added a slight tilt to the animation to make the vehicles look dynamic */
+            animation: driveIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none;
+        }
+        .emoji { font-size: 9rem; line-height: 1; filter: drop-shadow(0px 10px 5px rgba(0,0,0,0.2)); }
+        .word { 
+            font-size: 3rem; font-weight: bold; background: white; 
+            padding: 5px 20px; border-radius: 20px; border: 3px solid; margin-top: 5px; 
+        }
+        
+        @keyframes driveIn { 
+            0% { transform: scale(0) translateX(-100px) rotate(-15deg); opacity: 0; } 
+            100% { transform: scale(1) translateX(0) rotate(0deg); opacity: 1; } 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Start Button unlocks audio -->
+    <div id="start-overlay" onclick="startGame()">
+        <button>Tap to Start!</button>
+    </div>
+    
+    <!-- Native Double Click to exit -->
+    <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+        Double-Tap / Esc to Exit
+    </button>
+    
+    <!-- Main game canvas clicks -->
+    <div id="game-area" onclick="spawn(event.clientX, event.clientY)"></div>
+
+    <script>
+        const vehicles = [
+            { e: '🚗', w: 'Car', c: '#ff4757' },
+            { e: '🚕', w: 'Taxi', c: '#ffa502' },
+            { e: '🚙', w: 'Jeep', c: '#1e90ff' },
+            { e: '🚌', w: 'Bus', c: '#eccc68' },
+            { e: '🚒', w: 'Fire Truck', c: '#ff4757' },
+            { e: '🚓', w: 'Police', c: '#2f3542' },
+            { e: '🚑', w: 'Ambulance', c: '#ffffff' },
+            { e: '🚜', w: 'Tractor', c: '#2ed573' },
+            { e: '🚂', w: 'Train', c: '#2f3542' },
+            { e: '🚁', w: 'Helicopter', c: '#747d8c' },
+            { e: '✈️', w: 'Airplane', c: '#1e90ff' },
+            { e: '🚀', w: 'Rocket', c: '#9b59b6' }
+        ];
+        
+        let audioCtx = null;
+        let active = false;
+
+        function startGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            active = true;
+            
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(AudioContext) {
+                audioCtx = new AudioContext();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+            }
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if(!active) return;
+            if(e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if(e.key === ' ') { document.getElementById('game-area').innerHTML = ''; return; }
+            if(e.repeat) return;
+            
+            const x = Math.max(120, Math.random() * (window.innerWidth - 250));
+            const y = Math.max(120, Math.random() * (window.innerHeight - 250));
+            spawn(x, y);
+        });
+
+        function spawn(x, y) {
+            if(!active) return;
+            
+            const area = document.getElementById('game-area');
+            area.innerHTML = ''; 
+            
+            const v = vehicles[Math.floor(Math.random() * vehicles.length)];
+            
+            const div = document.createElement('div');
+            div.className = 'pop-element';
+            div.style.left = (x - 120) + 'px';
+            div.style.top = (y - 120) + 'px';
+            
+            // Adjust text color if the border is white (like the ambulance)
+            const textColor = v.c === '#ffffff' ? '#ff4757' : v.c;
+            
+            div.innerHTML = `<div class="emoji">${v.e}</div><div class="word" style="color:${textColor}; border-color:${v.c}">${v.w}</div>`;
+            area.appendChild(div);
+
+            try {
+                window.speechSynthesis.cancel();
+                let u = new SpeechSynthesisUtterance(v.w);
+                u.rate = 0.9;
+                u.pitch = 1.3;
+                window.speechSynthesis.speak(u);
+            } catch(e) { console.log(e); }
+            
+            // Generate a simple "honk" or "engine" sound
+            if(audioCtx) {
+                try {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    
+                    // A slightly lower, buzzing triangle wave for vehicles
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100 + Math.random()*50, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.4);
+                    
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+                } catch(e) { console.log(e); }
+            }
+        }
+    </script>
+</body>
+</html>

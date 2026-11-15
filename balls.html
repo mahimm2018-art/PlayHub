@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adi's Ball Pit</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #fffbe0 0%, #ffdfba 100%);
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #title {
+            font-size: clamp(3rem, 8vw, 6rem);
+            color: #ff8b94;
+            text-shadow: 3px 3px 0px #fff, 0px 5px 15px rgba(0,0,0,0.1);
+            animation: float 3s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        #instruction {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            color: #55b4b0;
+            margin-top: 20px;
+            text-shadow: 2px 2px 0px #fff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(-2deg); }
+            50% { transform: translateY(-15px) rotate(2deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui-layer">
+        <div id="title">The Ball Pit!</div>
+        <div id="instruction">Tap or Press Any Key</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const instruction = document.getElementById('instruction');
+
+        let width, height;
+        const balls = [];
+        const MAX_BALLS = 100; // Keep performance smooth
+
+        // The fun balls to drop!
+        const ballTypes = ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🎱', '🧶'];
+
+        // Physics constants
+        const gravity = 0.6;
+        const friction = 0.99; // Air resistance
+        const groundFriction = 0.90; // Rolling resistance
+        const restitution = 0.75; // Bounciness
+
+        // Resize canvas to fill window
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Audio Setup
+        let audioCtx = null;
+        let audioStarted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            audioStarted = true;
+            instruction.style.display = 'none'; // Hide instructions once interacting
+        }
+
+        // Procedural Sound Effects
+        function playSound(type, velocity = 10) {
+            if (!audioStarted || !audioCtx) return;
+
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            // Map velocity to volume (harder hit = louder)
+            const volume = Math.min(Math.max(velocity / 40, 0.05), 0.3);
+
+            if (type === 'spawn') {
+                // A fun rising "bloop" for a new ball
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, t);
+                osc.frequency.exponentialRampToValueAtTime(800, t + 0.15);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.15);
+            } else if (type === 'bounce') {
+                // A duller "thud/boing" for hitting the ground
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, t);
+                osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+                gain.gain.setValueAtTime(volume, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.1);
+            }
+        }
+
+        // Ball Class
+        class Ball {
+            constructor(x, y) {
+                this.radius = Math.random() * 20 + 35; // Size between 35 and 55
+                this.x = x;
+                this.y = y;
+                
+                // Random initial velocities
+                this.vx = (Math.random() - 0.5) * 15; 
+                this.vy = (Math.random() - 0.5) * 5; 
+                
+                this.emoji = ballTypes[Math.floor(Math.random() * ballTypes.length)];
+                
+                this.angle = Math.random() * Math.PI * 2;
+                this.vRot = (Math.random() - 0.5) * 0.2; // Rotation speed
+            }
+
+            update() {
+                // Apply physics
+                this.vy += gravity;
+                
+                this.vx *= friction;
+                this.vy *= friction;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.vRot;
+
+                // Floor collision
+                if (this.y + this.radius > height) {
+                    this.y = height - this.radius;
+                    this.vy *= -restitution;
+                    this.vx *= groundFriction;
+                    this.vRot *= groundFriction;
+                    
+                    // Only play bounce sound if hitting hard enough
+                    if (Math.abs(this.vy) > 3) {
+                        playSound('bounce', Math.abs(this.vy));
+                    }
+                }
+
+                // Ceiling collision
+                if (this.y - this.radius < 0) {
+                    this.y = this.radius;
+                    this.vy *= -restitution;
+                }
+
+                // Wall collisions
+                if (this.x + this.radius > width) {
+                    this.x = width - this.radius;
+                    this.vx *= -restitution;
+                } else if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx *= -restitution;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                ctx.font = `${this.radius * 2}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Add a soft shadow to the emoji
+                ctx.shadowColor = 'rgba(0,0,0,0.2)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 5;
+                
+                ctx.fillText(this.emoji, 0, 0);
+                ctx.restore();
+            }
+        }
+
+        // Spawn a new ball
+        function spawnBall(x, y) {
+            initAudio();
+            
+            // If spawning from keyboard, drop from top. If clicking, drop at cursor.
+            const spawnX = x !== undefined ? x : Math.random() * (width - 100) + 50;
+            const spawnY = y !== undefined ? y : 50;
+
+            const newBall = new Ball(spawnX, spawnY);
+            balls.push(newBall);
+            playSound('spawn');
+
+            // Prevent memory overload
+            if (balls.length > MAX_BALLS) {
+                balls.shift(); 
+            }
+        }
+
+        // Game Loop
+        function animate() {
+            // Clear canvas with transparency to show the CSS gradient background
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < balls.length; i++) {
+                balls[i].update();
+                balls[i].draw(ctx);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Input Listeners
+        window.addEventListener('pointerdown', (e) => {
+            if (e.isPrimary) {
+                spawnBall(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            // Prevent scrolling on Space or Arrows
+            if ([32, 37, 38, 39, 40].includes(e.keyCode)) {
+                e.preventDefault();
+            }
+            if (e.repeat) return; // Don't spawn hundreds if holding key down
+            
+            spawnBall(); // Spawns at random top location
+        });
+
+        // Start loop
+        window.onload = () => {
+            animate();
+        };
+
+    </script>
+</body>
+</html>
