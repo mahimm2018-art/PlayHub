@@ -31,13 +31,13 @@
             0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); }
         }
 
-        .parent-gate {
-            position: absolute; top: 15px; left: 15px;
-            background: rgba(0,0,0,0.1); color: #555; padding: 10px 15px;
-            border-radius: 8px; font-size: 0.9rem; z-index: 100;
-            border: 2px solid transparent; transition: all 0.2s; cursor: pointer;
+        /* --- NATIVE BACK BUTTON --- */
+        #back-btn {
+            position: fixed; top: 10px; left: 10px; z-index: 100;
+            padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: #333;
         }
-        .parent-gate:active { background: rgba(0,0,0,0.2); }
+        #back-btn:active { background: rgba(0,0,0,0.2); }
 
         .pop-element {
             position: absolute; display: flex; flex-direction: column; 
@@ -64,13 +64,15 @@
     </div>
 
     <div id="game-area">
-        <div class="parent-gate" id="back-btn">Hold 'Shift + Esc' or Long Press here for Menu</div>
+        <!-- Native Double Click to exit -->
+        <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+            Double-Tap / Esc to Exit
+        </button>
     </div>
 
     <script>
         const startScreen = document.getElementById('start-screen');
         const gameArea = document.getElementById('game-area');
-        const backBtn = document.getElementById('back-btn');
 
         const colors = ['#ff4d4d', '#ff9f43', '#1dd1a1', '#54a0ff', '#5f27cd', '#ff6b81', '#00cec9'];
         const numEmojis = ['🍓', '🎈', '⭐', '🚗', '🐸', '🍎', '🖍️', '🧸', '🍪', '🐶', '🏀', '🚂'];
@@ -96,20 +98,10 @@
             isGameActive = true;
         });
 
-        // --- PARENT GATE (BACK TO MENU) ---
-        let pressTimer;
-        function goBack() { window.location.href = 'index.html'; }
-        
-        backBtn.addEventListener('touchstart', (e) => { e.preventDefault(); pressTimer = setTimeout(goBack, 1500); });
-        backBtn.addEventListener('touchend', (e) => { e.preventDefault(); clearTimeout(pressTimer); });
-        backBtn.addEventListener('mousedown', () => { pressTimer = setTimeout(goBack, 1500); });
-        backBtn.addEventListener('mouseup', () => clearTimeout(pressTimer));
-        backBtn.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-
         // --- INPUT HANDLING (KEYBOARD) ---
         window.addEventListener('keydown', (e) => {
             if (!isGameActive) return;
-            if (e.shiftKey && e.key === 'Escape') { goBack(); return; }
+            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
             if (e.repeat) return; 
 
             if (e.key === ' ') { 
@@ -132,12 +124,12 @@
 
         // --- INPUT HANDLING (TOUCH/CLICK) ---
         window.addEventListener('mousedown', (e) => {
-            if (!isGameActive || e.target === backBtn) return;
+            if (!isGameActive || e.target.closest('#back-btn')) return;
             triggerNumber(Math.floor(Math.random() * 10) + 1, e.clientX, e.clientY);
         });
 
         window.addEventListener('touchstart', (e) => {
-            if (!isGameActive || e.target === backBtn) return;
+            if (!isGameActive || e.target.closest('#back-btn')) return;
             const touch = e.touches[0];
             triggerNumber(Math.floor(Math.random() * 10) + 1, touch.clientX, touch.clientY);
         }, { passive: true });
