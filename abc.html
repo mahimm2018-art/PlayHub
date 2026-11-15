@@ -252,4 +252,76 @@
             topRowEl.className = 'giant-letter';
             topRowEl.style.color = getRandomColor();
             
-            const textNode = document.createTextNode(letter
+            const textNode = document.createTextNode(letter);
+            const emojiEl = document.createElement('span');
+            emojiEl.className = 'emoji';
+            emojiEl.innerText = data.emoji;
+            
+            topRowEl.appendChild(textNode);
+            topRowEl.appendChild(emojiEl);
+
+            // Create the Word
+            const wordEl = document.createElement('div');
+            wordEl.className = 'word';
+            wordEl.innerText = data.word;
+
+            // Append to DOM
+            displayEl.appendChild(topRowEl);
+            displayEl.appendChild(wordEl);
+            gameArea.appendChild(displayEl);
+
+            // Audibly speak it
+            speak(letter, data.word);
+
+            // Clean up the DOM node after the CSS fadeOut animation finishes (0.5s in + 4s wait + 0.8s fade = ~5.3s)
+            setTimeout(() => {
+                if (gameArea.contains(displayEl)) {
+                    gameArea.removeChild(displayEl);
+                }
+            }, 5500);
+        }
+
+        // 1. Listen for Keyboard Presses (A-Z)
+        window.addEventListener('keydown', (e) => {
+            // Escape to exit
+            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
+
+            // Disable default behaviors to prevent toddler from scrolling, finding, closing tabs, etc.
+            if ([32, 37, 38, 39, 40].includes(e.keyCode)) {
+                e.preventDefault();
+            }
+            
+            // Ignore key holding repeats
+            if (e.repeat) return;
+
+            // Check if the pressed key is a letter
+            const key = e.key;
+            if (/^[a-zA-Z]$/.test(key)) {
+                triggerLetter(key);
+            } else {
+                // If they press a random key like Spacebar or numbers, pick a random letter
+                const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+                triggerLetter(randomLetter);
+            }
+        });
+
+        // 2. Listen for Screen Taps/Clicks (Random Letter)
+        window.addEventListener('pointerdown', (e) => {
+            // Prevent clicking the back button from triggering a letter
+            if (e.target.closest('#back-btn')) return;
+
+            // Only trigger on primary touch/click
+            if (e.isPrimary) {
+                const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+                triggerLetter(randomLetter);
+            }
+        });
+
+        // Initialize voices early so they are loaded when first clicked
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => synth.getVoices();
+        }
+
+    </script>
+</body>
+</html>
