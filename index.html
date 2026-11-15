@@ -126,7 +126,7 @@
     <!-- BUY ME A COFFEE (PARENT GATE) -->
     <div id="parent-footer">
         <div class="bmc-button" onclick="openPaymentLink('YOUR_LINK_HERE')">
-            ☕ Buy me a coffee
+            ☕ If Adi's Play Hub saved you some time or kept your toddler smiling safely, consider buying me a coffee!
         </div>
     </div>
 
@@ -141,7 +141,7 @@
             // Check if they answered correctly (and didn't hit cancel)
             if (answer !== null && parseInt(answer.trim()) === (num1 + num2)) {
                 // If you haven't replaced YOUR_LINK_HERE yet, prevent an empty window
-                if(url === 'YOUR_LINK_HERE') {
+                if(url === 'https://buymeacoffee.com/m007') {
                     alert("Payment link not set up yet! Add your Razorpay or BuyMeACoffee link in the code.");
                 } else {
                     window.open(url, '_blank');
