@@ -141,7 +141,7 @@
             // Check if they answered correctly (and didn't hit cancel)
             if (answer !== null && parseInt(answer.trim()) === (num1 + num2)) {
                 // If you haven't replaced YOUR_LINK_HERE yet, prevent an empty window
-                if(url === 'https://buymeacoffee.com/m007') {
+                if(url.includes(https://buymeacoffee.com/m007')) {
                     alert("Payment link not set up yet! Add your Razorpay or BuyMeACoffee link in the code.");
                 } else {
                     window.open(url, '_blank');
