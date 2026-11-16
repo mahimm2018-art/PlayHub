@@ -2,275 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Animal Sound Safari</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Animals</title>
     <style>
         body, html {
-            margin: 0; padding: 0;
-            width: 100vw; height: 100vh;
-            overflow: hidden;
-            background: radial-gradient(circle at center, #f3ffbd 0%, #c1fba4 100%);
-            font-family: 'Fredoka', sans-serif;
-            touch-action: none; user-select: none; -webkit-user-select: none;
-            display: flex; justify-content: center; align-items: center;
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            background-color: #e8f5e9; font-family: 'Comic Sans MS', sans-serif;
+            overflow: hidden; touch-action: none; user-select: none;
         }
 
+        /* --- START OVERLAY --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(232, 245, 233, 0.95);
+            display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        #start-overlay button {
+            font-size: 3rem; padding: 20px 40px; background: #2ed573; color: white;
+            border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 8px 0 #218c53;
+        }
+
+        /* --- BACK BUTTON --- */
         #back-btn {
-            position: fixed; top: 15px; left: 15px; z-index: 100;
+            position: fixed; top: 10px; left: 10px; z-index: 100;
             padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
-            font-size: 1rem; cursor: pointer; color: #333; font-family: sans-serif;
+            font-size: 1rem; cursor: pointer; color: #333;
         }
         #back-btn:active { background: rgba(0,0,0,0.2); }
 
-        #canvas {
-            display: block; width: 100vw; height: 100vh;
-            position: absolute; top: 0; left: 0;
+        /* --- GAME ELEMENTS --- */
+        #game-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        .pop-element {
+            position: absolute; display: flex; flex-direction: column; align-items: center;
+            animation: pop 0.4s ease-out forwards; pointer-events: none;
         }
-
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-        }
-
-        #instruction {
-            font-size: clamp(1.2rem, 3.5vw, 2.5rem); color: #35a7ff;
-            text-shadow: 2px 2px 0px #fff; animation: pulse 2s infinite; text-align: center;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
-        }
+        .emoji { font-size: 8rem; line-height: 1; }
+        .word { font-size: 3rem; font-weight: bold; background: white; padding: 5px 20px; border-radius: 20px; border: 3px solid; margin-top: 10px; }
+        
+        @keyframes pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
 
+    <!-- Start Button unlocks audio -->
+    <div id="start-overlay" onclick="startGame()">
+        <button>Tap to Start!</button>
+    </div>
+    
+    <!-- Native Double Click to exit -->
     <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
         Double-Tap / Esc to Exit
     </button>
-
-    <canvas id="canvas"></canvas>
     
-    <div id="ui-layer">
-        <div id="instruction">Tap or Press Any Key for Animals!</div>
-    </div>
+    <!-- Main game canvas clicks -->
+    <div id="game-area" onclick="spawn(event.clientX, event.clientY)"></div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const instruction = document.getElementById('instruction');
-
-        let width, height;
-        let currentAnimal = null; // Only store ONE active animal at a time
-
-        const animalList = [
-            { emoji: '🐶', name: 'Dog', sound: 'bark' },
-            { emoji: '🐱', name: 'Cat', sound: 'meow' },
-            { emoji: '🐮', name: 'Cow', sound: 'moo' },
-            { emoji: '🦁', name: 'Lion', sound: 'roar' },
-            { emoji: '🐘', name: 'Elephant', sound: 'trumpet' },
-            { emoji: '🐵', name: 'Monkey', sound: 'chatter' },
-            { emoji: '🦆', name: 'Duck', sound: 'quack' },
-            { emoji: '🦉', name: 'Owl', sound: 'hoot' },
-            { emoji: '🐷', name: 'Pig', sound: 'oink' },
-            { emoji: '🐸', name: 'Frog', sound: 'ribbit' }
+        const animals = [
+            { e: '🐶', w: 'Dog', c: '#ff4757' }, { e: '🐱', w: 'Cat', c: '#ffa502' },
+            { e: '🐮', w: 'Cow', c: '#2f3542' }, { e: '🐸', w: 'Frog', c: '#2ed573' },
+            { e: '🦆', w: 'Duck', c: '#ffa502' }, { e: '🐷', w: 'Pig', c: '#ff6b81' },
+            { e: '🐭', w: 'Mouse', c: '#747d8c' }, { e: '🐴', w: 'Horse', c: '#8B4513' }
         ];
-
-        function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // Audio Context setup
+        
         let audioCtx = null;
-        let audioStarted = false;
+        let active = false;
 
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function startGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            active = true;
+            
+            // Wake up Audio
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(AudioContext) {
+                audioCtx = new AudioContext();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            audioStarted = true;
-            if (instruction) instruction.style.display = 'none';
-        }
-
-        // True Synthesized Animal Sound Effects (No Voice)
-        function playAnimalSound(soundType) {
-            if (!audioStarted || !audioCtx) return;
-            const t = audioCtx.currentTime;
-
-            if (soundType === 'bark') {
-                playTone(180, 0.1, 'sawtooth');
-                setTimeout(() => playTone(230, 0.12, 'sawtooth'), 90);
-            } else if (soundType === 'meow') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(450, t);
-                osc.frequency.linearRampToValueAtTime(750, t + 0.2);
-                osc.frequency.linearRampToValueAtTime(400, t + 0.45);
-                gain.gain.setValueAtTime(0.25, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.45);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.45);
-            } else if (soundType === 'moo') {
-                // Deep authentic cow moo
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(140, t);
-                osc.frequency.linearRampToValueAtTime(115, t + 0.7);
-                osc.frequency.linearRampToValueAtTime(125, t + 1.0);
-                gain.gain.setValueAtTime(0.3, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 1.0);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 1.0);
-            } else if (soundType === 'roar') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(160, t);
-                osc.frequency.exponentialRampToValueAtTime(65, t + 0.6);
-                gain.gain.setValueAtTime(0.35, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.6);
-            } else if (soundType === 'trumpet') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(280, t);
-                osc.frequency.linearRampToValueAtTime(520, t + 0.3);
-                osc.frequency.linearRampToValueAtTime(220, t + 0.5);
-                gain.gain.setValueAtTime(0.25, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.5);
-            } else if (soundType === 'chatter') {
-                // Funny monkey chatter sound (bouncing pitches)
-                playTone(300, 0.08, 'triangle');
-                setTimeout(() => playTone(450, 0.08, 'triangle'), 80);
-                setTimeout(() => playTone(350, 0.08, 'triangle'), 160);
-                setTimeout(() => playTone(500, 0.12, 'triangle'), 240);
-            } else if (soundType === 'quack') {
-                playTone(340, 0.12, 'triangle');
-                setTimeout(() => playTone(260, 0.15, 'triangle'), 110);
-            } else if (soundType === 'hoot') {
-                playTone(240, 0.25, 'sine');
-                setTimeout(() => playTone(200, 0.35, 'sine'), 280);
-            } else if (soundType === 'oink') {
-                playTone(220, 0.12, 'sawtooth');
-                setTimeout(() => playTone(190, 0.18, 'sawtooth'), 130);
-            } else if (soundType === 'ribbit') {
-                playTone(280, 0.1, 'sawtooth');
-                setTimeout(() => playTone(350, 0.15, 'sawtooth'), 100);
-            } else {
-                playTone(400, 0.15, 'sine');
+            // Wake up Speech
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
             }
         }
 
-        function playTone(freq, duration, type = 'sine') {
-            if (!audioCtx) return;
-            const t = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, t);
-            gain.gain.setValueAtTime(0.25, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + duration);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(t); osc.stop(t + duration);
-        }
-
-        // Centered Single Animal Object
-        class ActiveAnimal {
-            constructor() {
-                this.data = animalList[Math.floor(Math.random() * animalList.length)];
-                this.scale = 0.2;
-                this.targetScale = 1;
-                this.rotation = (Math.random() - 0.5) * 0.1;
-            }
-
-            update() {
-                this.scale += (this.targetScale - this.scale) * 0.25;
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(width / 2, height / 2);
-                ctx.rotate(this.rotation);
-                ctx.scale(this.scale, this.scale);
-
-                // Big centered card background bubble
-                ctx.beginPath();
-                ctx.arc(0, 0, Math.min(width, height) * 0.28, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-                ctx.shadowColor = 'rgba(0,0,0,0.2)';
-                ctx.shadowBlur = 30;
-                ctx.shadowOffsetY = 15;
-                ctx.fill();
-                ctx.lineWidth = 10;
-                ctx.strokeStyle = '#ff5964';
-                ctx.stroke();
-
-                // Draw Large Animal Emoji
-                ctx.font = `${Math.min(width, height) * 0.22}px serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(this.data.emoji, 0, -20);
-
-                // Draw Bold Animal Name
-                ctx.font = 'bold 42px Fredoka, sans-serif';
-                ctx.fillStyle = '#333';
-                ctx.fillText(this.data.name, 0, Math.min(width, height) * 0.16);
-
-                ctx.restore();
-            }
-        }
-
-        function triggerNewAnimal() {
-            initAudio();
-            currentAnimal = new ActiveAnimal();
-            playAnimalSound(currentAnimal.data.sound);
-        }
-
-        // Main Loop
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-
-            if (currentAnimal) {
-                currentAnimal.update();
-                currentAnimal.draw(ctx);
-            }
-
-            requestAnimationFrame(animate);
-        }
-
-        // Input Listeners (Replacing previous animal instantly on every tap/keypress)
-        window.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('#back-btn')) return;
-            if (e.isPrimary) {
-                triggerNewAnimal();
-            }
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if(!active) return;
+            if(e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if(e.key === ' ') { document.getElementById('game-area').innerHTML = ''; return; }
+            if(e.repeat) return;
+            
+            const x = Math.max(100, Math.random() * (window.innerWidth - 200));
+            const y = Math.max(100, Math.random() * (window.innerHeight - 200));
+            spawn(x, y);
         });
 
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
-            if (e.repeat) return;
-            triggerNewAnimal();
-        });
+        function spawn(x, y) {
+            if(!active) return;
+            
+            const area = document.getElementById('game-area');
+            area.innerHTML = ''; // Clear previous animal immediately
+            
+            const a = animals[Math.floor(Math.random() * animals.length)];
+            
+            const div = document.createElement('div');
+            div.className = 'pop-element';
+            div.style.left = (x - 100) + 'px';
+            div.style.top = (y - 120) + 'px';
+            div.innerHTML = `<div class="emoji">${a.e}</div><div class="word" style="color:${a.c}; border-color:${a.c}">${a.w}</div>`;
+            area.appendChild(div);
 
-        window.onload = () => {
-            animate();
-        };
+            // Speech
+            try {
+                window.speechSynthesis.cancel();
+                let u = new SpeechSynthesisUtterance(a.w);
+                u.rate = 0.9;
+                u.pitch = 1.3;
+                window.speechSynthesis.speak(u);
+            } catch(e) { console.log(e); }
+            
+            // Simple synth beep instead of complex procedural sounds
+            if(audioCtx) {
+                try {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300 + Math.random()*200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                } catch(e) { console.log(e); }
+            }
+        }
     </script>
 </body>
 </html>
