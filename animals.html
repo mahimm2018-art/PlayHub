@@ -13,6 +13,7 @@
             background: radial-gradient(circle at center, #f3ffbd 0%, #c1fba4 100%);
             font-family: 'Fredoka', sans-serif;
             touch-action: none; user-select: none; -webkit-user-select: none;
+            display: flex; justify-content: center; align-items: center;
         }
 
         #back-btn {
@@ -33,21 +34,9 @@
             justify-content: center; align-items: center;
         }
 
-        #title {
-            font-size: clamp(2.5rem, 7vw, 6rem); color: #ff5964;
-            text-shadow: 3px 3px 0px #fff, 0px 5px 15px rgba(0,0,0,0.1);
-            animation: float 3s ease-in-out infinite; text-align: center; opacity: 0.85;
-        }
-
         #instruction {
             font-size: clamp(1.2rem, 3.5vw, 2.5rem); color: #35a7ff;
-            margin-top: 15px; text-shadow: 2px 2px 0px #fff;
-            animation: pulse 2s infinite; text-align: center;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(-2deg); }
-            50% { transform: translateY(-12px) rotate(2deg); }
+            text-shadow: 2px 2px 0px #fff; animation: pulse 2s infinite; text-align: center;
         }
 
         @keyframes pulse {
@@ -65,8 +54,7 @@
     <canvas id="canvas"></canvas>
     
     <div id="ui-layer">
-        <div id="title">Animal Safari!</div>
-        <div id="instruction">Tap or Press Any Key</div>
+        <div id="instruction">Tap or Press Any Key for Animals!</div>
     </div>
 
     <script>
@@ -75,9 +63,8 @@
         const instruction = document.getElementById('instruction');
 
         let width, height;
-        const animalsOnScreen = [];
+        let currentAnimal = null; // Only store ONE active animal at a time
 
-        // Animal database with emojis, names, and sound profile keys
         const animalList = [
             { emoji: '🐶', name: 'Dog', sound: 'bark' },
             { emoji: '🐱', name: 'Cat', sound: 'meow' },
@@ -112,200 +99,173 @@
                 audioCtx.resume();
             }
             audioStarted = true;
-            instruction.style.display = 'none';
+            if (instruction) instruction.style.display = 'none';
         }
 
-        // Custom Procedural Sound Effects for Each Animal
+        // True Synthesized Animal Sound Effects (No Voice)
         function playAnimalSound(soundType) {
             if (!audioStarted || !audioCtx) return;
             const t = audioCtx.currentTime;
 
             if (soundType === 'bark') {
-                // Short sharp low pitch bark
                 playTone(180, 0.1, 'sawtooth');
-                setTimeout(() => playTone(220, 0.1, 'sawtooth'), 80);
+                setTimeout(() => playTone(230, 0.12, 'sawtooth'), 90);
             } else if (soundType === 'meow') {
-                // Sliding pitch up and down
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, t);
-                osc.frequency.linearRampToValueAtTime(700, t + 0.2);
-                osc.frequency.linearRampToValueAtTime(500, t + 0.4);
-                gain.gain.setValueAtTime(0.2, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.4);
-            } else if (soundType === 'moo') {
-                // Deep low rumbling tone
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(130, t);
-                osc.frequency.linearRampToValueAtTime(110, t + 0.6);
+                osc.frequency.setValueAtTime(450, t);
+                osc.frequency.linearRampToValueAtTime(750, t + 0.2);
+                osc.frequency.linearRampToValueAtTime(400, t + 0.45);
                 gain.gain.setValueAtTime(0.25, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.6);
-            } else if (soundType === 'roar') {
-                // Deep descending rumble
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, t);
-                osc.frequency.exponentialRampToValueAtTime(70, t + 0.5);
-                gain.gain.setValueAtTime(0.3, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.5);
-            } else if (soundType === 'trumpet') {
-                // High brassy sweep
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(300, t);
-                osc.frequency.linearRampToValueAtTime(500, t + 0.25);
-                osc.frequency.linearRampToValueAtTime(250, t + 0.45);
-                gain.gain.setValueAtTime(0.2, t);
                 gain.gain.exponentialRampToValueAtTime(0.01, t + 0.45);
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(t); osc.stop(t + 0.45);
+            } else if (soundType === 'moo') {
+                // Deep authentic cow moo
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(140, t);
+                osc.frequency.linearRampToValueAtTime(115, t + 0.7);
+                osc.frequency.linearRampToValueAtTime(125, t + 1.0);
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 1.0);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 1.0);
+            } else if (soundType === 'roar') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, t);
+                osc.frequency.exponentialRampToValueAtTime(65, t + 0.6);
+                gain.gain.setValueAtTime(0.35, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.6);
+            } else if (soundType === 'trumpet') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(280, t);
+                osc.frequency.linearRampToValueAtTime(520, t + 0.3);
+                osc.frequency.linearRampToValueAtTime(220, t + 0.5);
+                gain.gain.setValueAtTime(0.25, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.5);
+            } else if (soundType === 'chatter') {
+                // Funny monkey chatter sound (bouncing pitches)
+                playTone(300, 0.08, 'triangle');
+                setTimeout(() => playTone(450, 0.08, 'triangle'), 80);
+                setTimeout(() => playTone(350, 0.08, 'triangle'), 160);
+                setTimeout(() => playTone(500, 0.12, 'triangle'), 240);
             } else if (soundType === 'quack') {
-                // Nasal duck quack
-                playTone(320, 0.15, 'triangle');
-                setTimeout(() => playTone(280, 0.15, 'triangle'), 100);
+                playTone(340, 0.12, 'triangle');
+                setTimeout(() => playTone(260, 0.15, 'triangle'), 110);
             } else if (soundType === 'hoot') {
-                // Hoot hoot
-                playTone(250, 0.2, 'sine');
-                setTimeout(() => playTone(220, 0.3, 'sine'), 250);
+                playTone(240, 0.25, 'sine');
+                setTimeout(() => playTone(200, 0.35, 'sine'), 280);
+            } else if (soundType === 'oink') {
+                playTone(220, 0.12, 'sawtooth');
+                setTimeout(() => playTone(190, 0.18, 'sawtooth'), 130);
+            } else if (soundType === 'ribbit') {
+                playTone(280, 0.1, 'sawtooth');
+                setTimeout(() => playTone(350, 0.15, 'sawtooth'), 100);
             } else {
-                // Generic cheerful pop for others (pig, frog, monkey)
                 playTone(400, 0.15, 'sine');
-            }
-
-            // Browser Speech Synthesis for Animal Name
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Stop overlap
-                const utterance = new SpeechSynthesisUtterance(eventAnimalName);
-                utterance.rate = 0.9;
-                utterance.pitch = 1.2;
-                window.speechSynthesis.speak(utterance);
             }
         }
 
-        let eventAnimalName = '';
-
         function playTone(freq, duration, type = 'sine') {
+            if (!audioCtx) return;
             const t = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = type;
             osc.frequency.setValueAtTime(freq, t);
-            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.setValueAtTime(0.25, t);
             gain.gain.exponentialRampToValueAtTime(0.01, t + duration);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(t); osc.stop(t + duration);
         }
 
-        // Animal Pop-up Object
-        class SpawnedAnimal {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
+        // Centered Single Animal Object
+        class ActiveAnimal {
+            constructor() {
                 this.data = animalList[Math.floor(Math.random() * animalList.length)];
-                eventAnimalName = this.data.name;
-
-                this.scale = 0.1;
+                this.scale = 0.2;
                 this.targetScale = 1;
-                this.life = 1.0; // Fade out timer
-                this.maxLife = 120; // Frames to stay visible
-                this.currentLife = this.maxLife;
+                this.rotation = (Math.random() - 0.5) * 0.1;
             }
 
             update() {
-                // Smooth pop-in scale spring
-                this.scale += (this.targetScale - this.scale) * 0.2;
-                this.currentLife--;
+                this.scale += (this.targetScale - this.scale) * 0.25;
             }
 
             draw(ctx) {
                 ctx.save();
-                ctx.translate(this.x, this.y);
+                ctx.translate(width / 2, height / 2);
+                ctx.rotate(this.rotation);
                 ctx.scale(this.scale, this.scale);
 
-                // Draw background bubble card
+                // Big centered card background bubble
                 ctx.beginPath();
-                ctx.arc(0, 0, 90, 0, Math.PI * 2);
+                ctx.arc(0, 0, Math.min(width, height) * 0.28, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-                ctx.shadowColor = 'rgba(0,0,0,0.15)';
-                ctx.shadowBlur = 20;
-                ctx.shadowOffsetY = 10;
+                ctx.shadowColor = 'rgba(0,0,0,0.2)';
+                ctx.shadowBlur = 30;
+                ctx.shadowOffsetY = 15;
                 ctx.fill();
-                ctx.lineWidth = 6;
+                ctx.lineWidth = 10;
                 ctx.strokeStyle = '#ff5964';
                 ctx.stroke();
 
-                // Draw Animal Emoji
-                ctx.font = '70px serif';
+                // Draw Large Animal Emoji
+                ctx.font = `${Math.min(width, height) * 0.22}px serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(this.data.emoji, 0, -10);
+                ctx.fillText(this.data.emoji, 0, -20);
 
-                // Draw Animal Name Text
-                ctx.font = 'bold 24px Fredoka, sans-serif';
+                // Draw Bold Animal Name
+                ctx.font = 'bold 42px Fredoka, sans-serif';
                 ctx.fillStyle = '#333';
-                ctx.fillText(this.data.name, 0, 55);
+                ctx.fillText(this.data.name, 0, Math.min(width, height) * 0.16);
 
                 ctx.restore();
             }
         }
 
-        function triggerAnimal(x, y) {
+        function triggerNewAnimal() {
             initAudio();
-
-            const spawnX = x !== undefined ? x : Math.random() * (width - 200) + 100;
-            const spawnY = y !== undefined ? y : Math.random() * (height - 300) + 150;
-
-            const newAnimal = new SpawnedAnimal(spawnX, spawnY);
-            animalsOnScreen.push(newAnimal);
-
-            playAnimalSound(newAnimal.data.sound);
-
-            // Limit max active animals on screen
-            if (animalsOnScreen.length > 6) {
-                animalsOnScreen.shift();
-            }
+            currentAnimal = new ActiveAnimal();
+            playAnimalSound(currentAnimal.data.sound);
         }
 
         // Main Loop
         function animate() {
             ctx.clearRect(0, 0, width, height);
 
-            for (let i = animalsOnScreen.length - 1; i >= 0; i--) {
-                const anim = animalsOnScreen[i];
-                anim.update();
-                anim.draw(ctx);
-
-                if (anim.currentLife <= 0) {
-                    animalsOnScreen.splice(i, 1);
-                }
+            if (currentAnimal) {
+                currentAnimal.update();
+                currentAnimal.draw(ctx);
             }
 
             requestAnimationFrame(animate);
         }
 
-        // Input Listeners
+        // Input Listeners (Replacing previous animal instantly on every tap/keypress)
         window.addEventListener('pointerdown', (e) => {
             if (e.target.closest('#back-btn')) return;
             if (e.isPrimary) {
-                triggerAnimal(e.clientX, e.clientY);
+                triggerNewAnimal();
             }
         });
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
             if (e.repeat) return;
-            triggerAnimal();
+            triggerNewAnimal();
         });
 
         window.onload = () => {
