@@ -2,140 +2,315 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Adi's Animals</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Animal Sound Safari</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
     <style>
         body, html {
-            margin: 0; padding: 0; width: 100vw; height: 100vh;
-            background-color: #e8f5e9; font-family: 'Comic Sans MS', sans-serif;
-            overflow: hidden; touch-action: none; user-select: none;
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #f3ffbd 0%, #c1fba4 100%);
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none; user-select: none; -webkit-user-select: none;
         }
 
-        /* --- START OVERLAY --- */
-        #start-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(232, 245, 233, 0.95);
-            display: flex; align-items: center; justify-content: center; z-index: 999;
-        }
-        #start-overlay button {
-            font-size: 3rem; padding: 20px 40px; background: #2ed573; color: white;
-            border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 8px 0 #218c53;
-        }
-
-        /* --- BACK BUTTON --- */
         #back-btn {
-            position: fixed; top: 10px; left: 10px; z-index: 100;
+            position: fixed; top: 15px; left: 15px; z-index: 100;
             padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
-            font-size: 1rem; cursor: pointer; color: #333;
+            font-size: 1rem; cursor: pointer; color: #333; font-family: sans-serif;
         }
         #back-btn:active { background: rgba(0,0,0,0.2); }
 
-        /* --- GAME ELEMENTS --- */
-        #game-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        
-        .pop-element {
-            position: absolute; display: flex; flex-direction: column; align-items: center;
-            animation: pop 0.4s ease-out forwards; pointer-events: none;
+        #canvas {
+            display: block; width: 100vw; height: 100vh;
+            position: absolute; top: 0; left: 0;
         }
-        .emoji { font-size: 8rem; line-height: 1; }
-        .word { font-size: 3rem; font-weight: bold; background: white; padding: 5px 20px; border-radius: 20px; border: 3px solid; margin-top: 10px; }
-        
-        @keyframes pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+
+        #title {
+            font-size: clamp(2.5rem, 7vw, 6rem); color: #ff5964;
+            text-shadow: 3px 3px 0px #fff, 0px 5px 15px rgba(0,0,0,0.1);
+            animation: float 3s ease-in-out infinite; text-align: center; opacity: 0.85;
+        }
+
+        #instruction {
+            font-size: clamp(1.2rem, 3.5vw, 2.5rem); color: #35a7ff;
+            margin-top: 15px; text-shadow: 2px 2px 0px #fff;
+            animation: pulse 2s infinite; text-align: center;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(-2deg); }
+            50% { transform: translateY(-12px) rotate(2deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Start Button unlocks audio -->
-    <div id="start-overlay" onclick="startGame()">
-        <button>Tap to Start!</button>
-    </div>
-    
-    <!-- Native Double Click to exit -->
     <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
         Double-Tap / Esc to Exit
     </button>
+
+    <canvas id="canvas"></canvas>
     
-    <!-- Main game canvas clicks -->
-    <div id="game-area" onclick="spawn(event.clientX, event.clientY)"></div>
+    <div id="ui-layer">
+        <div id="title">Animal Safari!</div>
+        <div id="instruction">Tap or Press Any Key</div>
+    </div>
 
     <script>
-        const animals = [
-            { e: '🐶', w: 'Dog', c: '#ff4757' }, { e: '🐱', w: 'Cat', c: '#ffa502' },
-            { e: '🐮', w: 'Cow', c: '#2f3542' }, { e: '🐸', w: 'Frog', c: '#2ed573' },
-            { e: '🦆', w: 'Duck', c: '#ffa502' }, { e: '🐷', w: 'Pig', c: '#ff6b81' },
-            { e: '🐭', w: 'Mouse', c: '#747d8c' }, { e: '🐴', w: 'Horse', c: '#8B4513' }
-        ];
-        
-        let audioCtx = null;
-        let active = false;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const instruction = document.getElementById('instruction');
 
-        function startGame() {
-            document.getElementById('start-overlay').style.display = 'none';
-            active = true;
-            
-            // Wake up Audio
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if(AudioContext) {
-                audioCtx = new AudioContext();
-                if(audioCtx.state === 'suspended') audioCtx.resume();
+        let width, height;
+        const animalsOnScreen = [];
+
+        // Animal database with emojis, names, and sound profile keys
+        const animalList = [
+            { emoji: '🐶', name: 'Dog', sound: 'bark' },
+            { emoji: '🐱', name: 'Cat', sound: 'meow' },
+            { emoji: '🐮', name: 'Cow', sound: 'moo' },
+            { emoji: '🦁', name: 'Lion', sound: 'roar' },
+            { emoji: '🐘', name: 'Elephant', sound: 'trumpet' },
+            { emoji: '🐵', name: 'Monkey', sound: 'chatter' },
+            { emoji: '🦆', name: 'Duck', sound: 'quack' },
+            { emoji: '🦉', name: 'Owl', sound: 'hoot' },
+            { emoji: '🐷', name: 'Pig', sound: 'oink' },
+            { emoji: '🐸', name: 'Frog', sound: 'ribbit' }
+        ];
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Audio Context setup
+        let audioCtx = null;
+        let audioStarted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            // Wake up Speech
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            audioStarted = true;
+            instruction.style.display = 'none';
+        }
+
+        // Custom Procedural Sound Effects for Each Animal
+        function playAnimalSound(soundType) {
+            if (!audioStarted || !audioCtx) return;
+            const t = audioCtx.currentTime;
+
+            if (soundType === 'bark') {
+                // Short sharp low pitch bark
+                playTone(180, 0.1, 'sawtooth');
+                setTimeout(() => playTone(220, 0.1, 'sawtooth'), 80);
+            } else if (soundType === 'meow') {
+                // Sliding pitch up and down
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, t);
+                osc.frequency.linearRampToValueAtTime(700, t + 0.2);
+                osc.frequency.linearRampToValueAtTime(500, t + 0.4);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.4);
+            } else if (soundType === 'moo') {
+                // Deep low rumbling tone
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(130, t);
+                osc.frequency.linearRampToValueAtTime(110, t + 0.6);
+                gain.gain.setValueAtTime(0.25, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.6);
+            } else if (soundType === 'roar') {
+                // Deep descending rumble
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, t);
+                osc.frequency.exponentialRampToValueAtTime(70, t + 0.5);
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.5);
+            } else if (soundType === 'trumpet') {
+                // High brassy sweep
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, t);
+                osc.frequency.linearRampToValueAtTime(500, t + 0.25);
+                osc.frequency.linearRampToValueAtTime(250, t + 0.45);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.45);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t); osc.stop(t + 0.45);
+            } else if (soundType === 'quack') {
+                // Nasal duck quack
+                playTone(320, 0.15, 'triangle');
+                setTimeout(() => playTone(280, 0.15, 'triangle'), 100);
+            } else if (soundType === 'hoot') {
+                // Hoot hoot
+                playTone(250, 0.2, 'sine');
+                setTimeout(() => playTone(220, 0.3, 'sine'), 250);
+            } else {
+                // Generic cheerful pop for others (pig, frog, monkey)
+                playTone(400, 0.15, 'sine');
+            }
+
+            // Browser Speech Synthesis for Animal Name
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+                window.speechSynthesis.cancel(); // Stop overlap
+                const utterance = new SpeechSynthesisUtterance(eventAnimalName);
+                utterance.rate = 0.9;
+                utterance.pitch = 1.2;
+                window.speechSynthesis.speak(utterance);
             }
         }
 
-        // Keyboard support
-        document.addEventListener('keydown', (e) => {
-            if(!active) return;
-            if(e.key === 'Escape') { window.location.href = 'index.html'; return; }
-            if(e.key === ' ') { document.getElementById('game-area').innerHTML = ''; return; }
-            if(e.repeat) return;
-            
-            const x = Math.max(100, Math.random() * (window.innerWidth - 200));
-            const y = Math.max(100, Math.random() * (window.innerHeight - 200));
-            spawn(x, y);
+        let eventAnimalName = '';
+
+        function playTone(freq, duration, type = 'sine') {
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + duration);
+        }
+
+        // Animal Pop-up Object
+        class SpawnedAnimal {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.data = animalList[Math.floor(Math.random() * animalList.length)];
+                eventAnimalName = this.data.name;
+
+                this.scale = 0.1;
+                this.targetScale = 1;
+                this.life = 1.0; // Fade out timer
+                this.maxLife = 120; // Frames to stay visible
+                this.currentLife = this.maxLife;
+            }
+
+            update() {
+                // Smooth pop-in scale spring
+                this.scale += (this.targetScale - this.scale) * 0.2;
+                this.currentLife--;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.scale, this.scale);
+
+                // Draw background bubble card
+                ctx.beginPath();
+                ctx.arc(0, 0, 90, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                ctx.shadowColor = 'rgba(0,0,0,0.15)';
+                ctx.shadowBlur = 20;
+                ctx.shadowOffsetY = 10;
+                ctx.fill();
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#ff5964';
+                ctx.stroke();
+
+                // Draw Animal Emoji
+                ctx.font = '70px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.data.emoji, 0, -10);
+
+                // Draw Animal Name Text
+                ctx.font = 'bold 24px Fredoka, sans-serif';
+                ctx.fillStyle = '#333';
+                ctx.fillText(this.data.name, 0, 55);
+
+                ctx.restore();
+            }
+        }
+
+        function triggerAnimal(x, y) {
+            initAudio();
+
+            const spawnX = x !== undefined ? x : Math.random() * (width - 200) + 100;
+            const spawnY = y !== undefined ? y : Math.random() * (height - 300) + 150;
+
+            const newAnimal = new SpawnedAnimal(spawnX, spawnY);
+            animalsOnScreen.push(newAnimal);
+
+            playAnimalSound(newAnimal.data.sound);
+
+            // Limit max active animals on screen
+            if (animalsOnScreen.length > 6) {
+                animalsOnScreen.shift();
+            }
+        }
+
+        // Main Loop
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = animalsOnScreen.length - 1; i >= 0; i--) {
+                const anim = animalsOnScreen[i];
+                anim.update();
+                anim.draw(ctx);
+
+                if (anim.currentLife <= 0) {
+                    animalsOnScreen.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Input Listeners
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#back-btn')) return;
+            if (e.isPrimary) {
+                triggerAnimal(e.clientX, e.clientY);
+            }
         });
 
-        function spawn(x, y) {
-            if(!active) return;
-            
-            const area = document.getElementById('game-area');
-            area.innerHTML = ''; // Clear previous animal immediately
-            
-            const a = animals[Math.floor(Math.random() * animals.length)];
-            
-            const div = document.createElement('div');
-            div.className = 'pop-element';
-            div.style.left = (x - 100) + 'px';
-            div.style.top = (y - 120) + 'px';
-            div.innerHTML = `<div class="emoji">${a.e}</div><div class="word" style="color:${a.c}; border-color:${a.c}">${a.w}</div>`;
-            area.appendChild(div);
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if (e.repeat) return;
+            triggerAnimal();
+        });
 
-            // Speech
-            try {
-                window.speechSynthesis.cancel();
-                let u = new SpeechSynthesisUtterance(a.w);
-                u.rate = 0.9;
-                u.pitch = 1.3;
-                window.speechSynthesis.speak(u);
-            } catch(e) { console.log(e); }
-            
-            // Simple synth beep instead of complex procedural sounds
-            if(audioCtx) {
-                try {
-                    let osc = audioCtx.createOscillator();
-                    let gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(300 + Math.random()*200, audioCtx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
-                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                    osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-                } catch(e) { console.log(e); }
-            }
-        }
+        window.onload = () => {
+            animate();
+        };
     </script>
 </body>
 </html>
