@@ -2,52 +2,97 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ToddlerMash</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #fdfbf7;
         }
-        body, html {
-            margin: 0; padding: 0;
-            width: 100vw; height: 100vh;
-            background-color: var(--bg-color);
-            font-family: 'Comic Sans MS', 'Nunito', 'Segoe UI', sans-serif;
-            overflow: hidden; touch-action: none; user-select: none;
+        
+        * {
+            box-sizing: border-box;
         }
 
-        /* --- MENU UI --- */
-        #menu-screen {
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            height: 100%; background: #fffbe6;
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10;
+        body, html {
+            margin: 0; 
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            font-family: 'Fredoka', 'Comic Sans MS', 'Nunito', sans-serif;
+            /* Allow natural scrolling when zoomed or on smaller devices */
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-user-select: none;
+            user-select: none;
         }
+
+        /* --- MAIN CONTAINER FLOW --- */
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 30px 15px 40px 15px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
         h1 { 
-            font-size: 3rem; color: #ff6b81; margin-bottom: 5px; 
-            text-shadow: 2px 2px 0px #ffeaa7; text-align: center;
+            font-size: clamp(2.5rem, 6vw, 4rem); 
+            color: #ff6b81; 
+            margin: 0 0 5px 0; 
+            text-shadow: 2px 2px 0px #ffeaa7; 
         }
+
         .subtitle { 
-            font-size: 1.2rem; color: #747d8c; margin-bottom: 30px; font-weight: bold; 
+            font-size: clamp(1rem, 2.5vw, 1.2rem); 
+            color: #747d8c; 
+            font-weight: bold; 
+            margin: 0;
         }
         
+        /* --- RESPONSIVE GRID --- */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 180px));
-            gap: 15px; max-width: 900px; width: 90%; justify-content: center;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px; 
+            max-width: 800px; 
+            width: 100%; 
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                gap: 15px;
+            }
         }
         
         .tile {
-            border-radius: 24px; padding: 20px 10px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 8px 0 rgba(0,0,0,0.1); border: 4px solid rgba(255,255,255,0.5);
+            border-radius: 24px; 
+            padding: 22px 15px;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            cursor: pointer; 
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1); 
+            border: 4px solid rgba(255,255,255,0.6);
+            text-decoration: none;
         }
-        .tile:hover { transform: translateY(-5px); box-shadow: 0 12px 0 rgba(0,0,0,0.15); }
-        .tile:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        .tile:hover { transform: translateY(-4px); box-shadow: 0 12px 0 rgba(0,0,0,0.15); }
+        .tile:active { transform: translateY(2px); box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
         
-        .tile-icon { font-size: 4rem; margin-bottom: 10px; filter: drop-shadow(2px 4px 0px rgba(0,0,0,0.15)); }
-        .tile-title { font-size: 1.2rem; font-weight: bold; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
+        .tile-icon { font-size: clamp(3.5rem, 8vw, 4.5rem); margin-bottom: 8px; filter: drop-shadow(2px 4px 0px rgba(0,0,0,0.15)); }
+        .tile-title { font-size: clamp(1.2rem, 3vw, 1.5rem); font-weight: bold; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
 
         /* Tile Colors */
         .bg-red { background: #ff4757; }
@@ -59,76 +104,89 @@
         .bg-dark { background: #2f3542; }
         .bg-pink { background: #ff6b81; }
 
-        /* --- FOOTER & BUY ME A COFFEE --- */
-        #parent-footer {
-            position: absolute; 
-            bottom: 20px; 
+        /* --- NATURAL FOOTER FLOW (NO OVERLAPS) --- */
+        footer {
+            margin-top: auto;
             width: 100%; 
             display: flex; 
-            justify-content: center; 
-            z-index: 20;
+            flex-direction: column;
+            align-items: center; 
+            gap: 12px;
+            padding-top: 10px;
         }
+
         .bmc-button {
             background-color: #FFDD00; 
             color: #000000; 
-            padding: 10px 20px; 
+            padding: 12px 24px; 
             border-radius: 30px; 
-            font-size: 1rem; 
+            font-size: clamp(0.9rem, 2vw, 1rem); 
             font-weight: bold; 
             text-decoration: none; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            display: flex; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            display: inline-flex; 
             align-items: center; 
             gap: 8px; 
             cursor: pointer;
             border: 2px solid transparent;
             transition: transform 0.2s;
+            text-align: center;
+            max-width: 90%;
         }
-        .bmc-button:hover { transform: translateY(-3px); }
+        .bmc-button:hover { transform: translateY(-2px); }
         .bmc-button:active { transform: translateY(1px); }
+
+        .about-link {
+            color: #888; 
+            text-decoration: none; 
+            font-size: 0.9rem; 
+            font-weight: 500;
+        }
+        .about-link:hover { color: #555; text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <!-- MAIN MENU -->
-    <div id="menu-screen">
-        <h1>ToddlerMash</h1>
-        <div class="subtitle">Ad-Free & Safe. Press a tile!</div>
+    <div class="page-wrapper">
+        <header>
+            <h1>ToddlerMash</h1>
+            <div class="subtitle">Ad-Free & Safe. Press a tile!</div>
+        </header>
         
         <div class="grid">
-            <div class="tile bg-red" onclick="window.location.href='abc.html'">
+            <a href="abc (1).html" class="tile bg-red">
                 <div class="tile-icon">🍎</div><div class="tile-title">ABCs</div>
-            </div>
-            <div class="tile bg-blue" onclick="window.location.href='numbers.html'">
+            </a>
+            <a href="numbers.html" class="tile bg-blue">
                 <div class="tile-icon">🔢</div><div class="tile-title">Numbers</div>
-            </div>
-            <div class="tile bg-green" onclick="window.location.href='animals.html'">
+            </a>
+            <a href="animals.html" class="tile bg-green">
                 <div class="tile-icon">🐶</div><div class="tile-title">Animals</div>
-            </div>
-            <div class="tile bg-orange" onclick="window.location.href='vehicles.html'">
+            </a>
+            <a href="vehicles.html" class="tile bg-orange">
                 <div class="tile-icon">🚂</div><div class="tile-title">Vehicles</div>
-            </div>
-            <div class="tile bg-purple" onclick="window.location.href='music.html'">
+            </a>
+            <a href="music.html" class="tile bg-purple">
                 <div class="tile-icon">🎹</div><div class="tile-title">Music Box</div>
-            </div>
-            <div class="tile bg-teal" onclick="window.location.href='balls.html'">
+            </a>
+            <a href="balls.html" class="tile bg-teal">
                 <div class="tile-icon">🏀</div><div class="tile-title">Ball Pit</div>
-            </div>
-            <div class="tile bg-dark" onclick="window.location.href='fireworks.html'">
+            </a>
+            <a href="fireworks.html" class="tile bg-dark">
                 <div class="tile-icon">🎆</div><div class="tile-title">Night Sky</div>
-            </div>
-            <div class="tile bg-pink" onclick="window.location.href='ripples.html'">
+            </a>
+            <a href="ripples.html" class="tile bg-pink">
                 <div class="tile-icon">💧</div><div class="tile-title">Water</div>
-            </div>
+            </a>
         </div>
+
+        <footer>
+            <a href="https://buymeacoffee.com/m007" target="_blank" class="bmc-button">
+                ☕ If ToddlerMash saved you some time or kept your toddler smiling safely, buy me a coffee!
+            </a>
+            <a href="about.html" class="about-link">The Story Behind the Hub</a>
+        </footer>
     </div>
 
-    <!-- BUY ME A COFFEE (PARENT GATE) -->
-    <div id="parent-footer">
-        <a href="https://buymeacoffee.com/m007" target="_blank" class="bmc-button">
-            ☕ If ToddlerMash saved you some time or kept your toddler smiling safely, consider buying me a coffee!
-        </a>
-    </div>
-    
 </body>
 </html>
