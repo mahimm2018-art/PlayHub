@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Adi's Bubble Pop</title>
+    <title>Bubble Pop</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
     <style>
         body, html {
             margin: 0; padding: 0;
             width: 100vw; height: 100vh;
             overflow: hidden;
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            /* Deep, rich twilight gradient to make colors pop */
+            background: radial-gradient(circle at center, #2b5876 0%, #151828 100%);
             font-family: 'Fredoka', sans-serif;
             touch-action: none; user-select: none; -webkit-user-select: none;
         }
 
         #back-btn {
             position: fixed; top: 15px; left: 15px; z-index: 100;
-            padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
-            font-size: 1rem; cursor: pointer; color: #333; font-family: sans-serif;
+            padding: 10px 15px; background: rgba(255,255,255,0.2); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: #fff; font-family: sans-serif;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        #back-btn:active { background: rgba(0,0,0,0.2); }
+        #back-btn:active { background: rgba(255,255,255,0.3); }
 
         canvas {
             display: block; width: 100vw; height: 100vh;
@@ -34,14 +36,14 @@
         }
 
         #instruction {
-            font-size: clamp(1.2rem, 3.5vw, 2.5rem); color: #fff;
-            text-shadow: 0px 3px 10px rgba(0,0,0,0.2);
+            font-size: clamp(1.5rem, 4vw, 3rem); color: #fff;
+            text-shadow: 0px 0px 15px rgba(255,255,255,0.8);
             animation: pulse 2s infinite; text-align: center;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; text-shadow: 0px 0px 25px rgba(255,255,255,1); }
         }
     </style>
 </head>
@@ -113,11 +115,11 @@
 
         class Bubble {
             constructor(x, y) {
-                this.r = Math.random() * 30 + 30;
+                this.r = Math.random() * 30 + 35;
                 this.x = x !== undefined ? x : Math.random() * (width - this.r * 2) + this.r;
                 this.y = y !== undefined ? y : height + this.r;
                 
-                this.speedY = -(Math.random() * 1.5 + 0.5);
+                this.speedY = -(Math.random() * 2.0 + 1.0); // Slightly faster floating
                 this.wobbleSpeed = Math.random() * 0.05 + 0.02;
                 this.wobbleDistance = Math.random() * 1.5;
                 this.wobbleOffset = Math.random() * Math.PI * 2;
@@ -134,18 +136,26 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 
+                // Add a glowing shadow to make it pop against the dark background
+                ctx.shadowColor = `hsl(${this.hue}, 100%, 60%)`;
+                ctx.shadowBlur = 20;
+
+                // Vivid transparent fill
                 ctx.beginPath();
                 ctx.arc(0, 0, this.r, 0, Math.PI * 2);
-                ctx.fillStyle = `hsla(${this.hue}, 80%, 70%, 0.25)`;
+                ctx.fillStyle = `hsla(${this.hue}, 100%, 55%, 0.4)`;
                 ctx.fill();
                 
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = `hsla(${this.hue}, 100%, 85%, 0.8)`;
+                // Bright, thick outline
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = `hsla(${this.hue}, 100%, 80%, 1)`;
                 ctx.stroke();
                 
+                // Bright white specular reflection
+                ctx.shadowBlur = 0; // Turn off glow for the highlight
                 ctx.beginPath();
                 ctx.arc(-this.r * 0.35, -this.r * 0.35, this.r * 0.2, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.fill();
                 
                 ctx.restore();
@@ -156,9 +166,9 @@
             constructor(x, y, hue) {
                 this.x = x;
                 this.y = y;
-                this.r = Math.random() * 4 + 2;
-                this.vx = (Math.random() - 0.5) * 10;
-                this.vy = (Math.random() - 0.5) * 10;
+                this.r = Math.random() * 6 + 3; // Slightly larger particles
+                this.vx = (Math.random() - 0.5) * 12; // More explosive
+                this.vy = (Math.random() - 0.5) * 12;
                 this.life = 1.0;
                 this.hue = hue;
             }
@@ -166,15 +176,20 @@
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
-                this.life -= 0.04;
-                this.vy += 0.2; 
+                this.life -= 0.03; // Slower fade
+                this.vy += 0.25; 
             }
 
             draw(ctx) {
+                ctx.save();
+                // Glowing particles
+                ctx.shadowColor = `hsl(${this.hue}, 100%, 60%)`;
+                ctx.shadowBlur = 15;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-                ctx.fillStyle = `hsla(${this.hue}, 100%, 80%, ${this.life})`;
+                ctx.fillStyle = `hsla(${this.hue}, 100%, 70%, ${this.life})`;
                 ctx.fill();
+                ctx.restore();
             }
         }
 
@@ -182,7 +197,7 @@
             const b = bubbles[index];
             playPopSound();
             
-            for(let i = 0; i < 8; i++) {
+            for(let i = 0; i < 12; i++) { // More particles per pop
                 particles.push(new Particle(b.x, b.y, b.hue));
             }
             
@@ -193,7 +208,8 @@
             ctx.clearRect(0, 0, width, height);
             frameCount++;
 
-            if (frameCount % 40 === 0 && bubbles.length < 15) {
+            // Increased spawn rate slightly for more action
+            if (frameCount % 30 === 0 && bubbles.length < 20) {
                 bubbles.push(new Bubble());
             }
 
@@ -217,14 +233,13 @@
             requestAnimationFrame(animate);
         }
 
-        // Dedicated tap handler for both touch and mouse
         function handleTap(tapX, tapY) {
             initAudio();
             let hit = false;
             
             for (let i = bubbles.length - 1; i >= 0; i--) {
                 const dist = Math.hypot(bubbles[i].x - tapX, bubbles[i].y - tapY);
-                if (dist <= bubbles[i].r + 30) { // +30px generous toddler hitbox
+                if (dist <= bubbles[i].r + 35) { // Extra generous hitbox
                     popBubble(i);
                     hit = true;
                     break; 
@@ -240,7 +255,7 @@
 
         // Mobile touch events directly on canvas
         canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevents double-firing with mousedown on mobile
+            e.preventDefault(); 
             handleTap(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
 
@@ -265,7 +280,7 @@
         });
 
         window.onload = () => {
-            for(let i=0; i<8; i++) {
+            for(let i=0; i<10; i++) {
                 bubbles.push(new Bubble(
                     Math.random() * width, 
                     Math.random() * height + height/2 
