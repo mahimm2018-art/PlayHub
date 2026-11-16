@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Adi's Peek-a-Boo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #ffecd2 0%, #fcb69f 100%);
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none; user-select: none; -webkit-user-select: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        #back-btn {
+            position: fixed; top: 15px; left: 15px; z-index: 100;
+            padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: #333; font-family: sans-serif;
+        }
+        #back-btn:active { background: rgba(0,0,0,0.2); }
+
+        #instruction {
+            font-size: clamp(1.5rem, 4vw, 3rem); color: #d35400;
+            text-shadow: 2px 2px 0px #fff; animation: pulse 2s infinite; 
+            margin-bottom: 40px; text-align: center;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        /* --- 3D DOORS LAYOUT --- */
+        .doors-container {
+            display: flex;
+            gap: 20px;
+            max-width: 900px;
+            width: 95%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .doors-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        /* Perspective is required on the parent for the 3D swing effect */
+        .door-wrapper {
+            perspective: 1000px;
+            flex: 1;
+            width: 100%;
+            max-width: 250px;
+            aspect-ratio: 3 / 4;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .door-wrapper { aspect-ratio: 16 / 9; max-width: 80%; }
+        }
+
+        .door-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform-style: preserve-3d;
+            transform-origin: left center; /* Door hinges on the left */
+        }
+
+        /* When the 'open' class is added, swing the door open on the Y axis */
+        .door-wrapper.open .door-inner {
+            transform: rotateY(-105deg);
+        }
+
+        .door-front, .door-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0;
+            backface-visibility: hidden;
+            border-radius: 24px;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border: 6px solid rgba(255,255,255,0.5);
+        }
+
+        /* The Door Exterior */
+        .door-front {
+            font-size: clamp(3rem, 8vw, 5rem);
+            color: white; text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        
+        .door-1 .door-front { background: #ff4757; }
+        .door-2 .door-front { background: #1dd1a1; }
+        .door-3 .door-front { background: #54a0ff; }
+
+        /* The Reveal Interior (Behind the door) */
+        .door-back {
+            background: #fff;
+            transform: rotateY(0deg); /* Lives flat behind the 3D space */
+            z-index: 1;
+            font-size: clamp(4rem, 12vw, 7rem);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+        Double-Tap / Esc to Exit
+    </button>
+
+    <div id="instruction">Who's hiding? Tap a door!</div>
+
+    <div class="doors-container">
+        <div class="door-wrapper door-1" onclick="openDoor(0)">
+            <div class="door-inner">
+                <div class="door-back" id="reveal-0"></div>
+                <div class="door-front">?</div>
+            </div>
+        </div>
+
+        <div class="door-wrapper door-2" onclick="openDoor(1)">
+            <div class="door-inner">
+                <div class="door-back" id="reveal-1"></div>
+                <div class="door-front">?</div>
+            </div>
+        </div>
+
+        <div class="door-wrapper door-3" onclick="openDoor(2)">
+            <div class="door-inner">
+                <div class="door-back" id="reveal-2"></div>
+                <div class="door-front">?</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const doors = document.querySelectorAll('.door-wrapper');
+        const instruction = document.getElementById('instruction');
+        
+        // Silly characters to hide behind the doors
+        const characters = ['👻', '🤖', '👾', '🤡', '🦁', '🐸', '🦖', '🐙', '🦄', '🐷'];
+        
+        let audioCtx = null;
+        let isAudioInit = false;
+        let activeDoorIndex = null;
+
+        function initAudio() {
+            if (!isAudioInit) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                // Initialize speech synthesis silently to warm it up
+                if ('speechSynthesis' in window) {
+                    let msg = new SpeechSynthesisUtterance('');
+                    window.speechSynthesis.speak(msg);
+                }
+                
+                isAudioInit = true;
+                instruction.style.display = 'none';
+            }
+        }
+
+        // Bouncy "Boing" sound for the door opening
+        function playBoing() {
+            if (!audioCtx) return;
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, t);
+            osc.frequency.exponentialRampToValueAtTime(600, t + 0.3); // Pitch slides up quickly
+            
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + 0.3);
+        }
+
+        function speakPeekaboo() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance("Peek a boo!");
+                utterance.pitch = 1.6; // High pitched and silly
+                utterance.rate = 1.1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function openDoor(index) {
+            initAudio();
+
+            const door = doors[index];
+            
+            // If this door is already open, ignore the click
+            if (door.classList.contains('open')) return;
+
+            // Pick a random character and assign it to the back of this specific door
+            const revealDiv = document.getElementById(`reveal-${index}`);
+            revealDiv.innerText = characters[Math.floor(Math.random() * characters.length)];
+
+            // Play the effects
+            playBoing();
+            
+            // Add a tiny delay for the voice so the door is visually open when it speaks
+            setTimeout(() => { speakPeekaboo(); }, 250);
+
+            // Swing it open
+            door.classList.add('open');
+
+            // Auto-close the door after 2.5 seconds so they can play again
+            setTimeout(() => {
+                door.classList.remove('open');
+            }, 2500);
+        }
+
+        // Keyboard mashing triggers a random closed door!
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if (e.repeat) return;
+            initAudio();
+
+            // Find doors that are currently closed
+            const closedDoors = [];
+            doors.forEach((door, idx) => {
+                if (!door.classList.contains('open')) {
+                    closedDoors.push(idx);
+                }
+            });
+
+            // Open a random closed door, or if all are open, ignore
+            if (closedDoors.length > 0) {
+                const randomClosedIndex = closedDoors[Math.floor(Math.random() * closedDoors.length)];
+                openDoor(randomClosedIndex);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Adi's Paint Splat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background-color: #fdfbf7; /* Blank canvas color */
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none; user-select: none; -webkit-user-select: none;
+        }
+
+        #back-btn {
+            position: fixed; top: 15px; left: 15px; z-index: 100;
+            padding: 10px 15px; background: rgba(0,0,0,0.1); border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; color: #333; font-family: sans-serif;
+        }
+        #back-btn:active { background: rgba(0,0,0,0.2); }
+
+        canvas {
+            display: block; width: 100vw; height: 100vh;
+            position: absolute; top: 0; left: 0;
+            cursor: crosshair;
+        }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+
+        #instruction {
+            font-size: clamp(1.5rem, 4vw, 3rem); color: #b2bec3;
+            text-shadow: 2px 2px 0px #fff; animation: fadeOut 3s forwards; 
+            animation-delay: 2s; text-align: center; opacity: 0.8;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 0.8; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="back-btn" ondblclick="window.location.href='index.html'" onkeydown="if(event.key==='Enter') window.location.href='index.html'">
+        Double-Tap / Esc to Exit
+    </button>
+
+    <!-- The painting canvas -->
+    <canvas id="canvas"></canvas>
+    
+    <div id="ui-layer">
+        <div id="instruction">Tap to Splat! Drag to Draw!</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let hue = 0; // For rainbow drawing lines
+
+        function resize() {
+            // Save canvas content before resizing
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width || window.innerWidth;
+            tempCanvas.height = canvas.height || window.innerHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            if (canvas.width > 0) tempCtx.drawImage(canvas, 0, 0);
+
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            // Restore canvas content
+            ctx.drawImage(tempCanvas, 0, 0);
+            
+            // Set drawing styles
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 25; // Thick finger-paint style lines
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- Audio Context for "Splat" sound ---
+        let audioCtx = null;
+        let audioStarted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            audioStarted = true;
+        }
+
+        function playSplatSound() {
+            if (!audioStarted || !audioCtx) return;
+            const t = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            // A quick, low-frequency drop creates a wet "splat/thud" sound
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(250, t);
+            osc.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+            
+            gain.gain.setValueAtTime(0.3, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(t);
+            osc.stop(t + 0.15);
+        }
+
+        // --- Procedural Paint Splatter Generator ---
+        function createSplat(x, y) {
+            playSplatSound();
+            
+            const splatColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            ctx.fillStyle = splatColor;
+            ctx.beginPath();
+
+            // The main central blob
+            const radius = Math.random() * 20 + 30; // 30-50px
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Random droplets flying outward
+            const droplets = Math.floor(Math.random() * 10) + 8; // 8 to 17 droplets
+            for (let i = 0; i < droplets; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = radius + Math.random() * 60; // How far it flies
+                const dropRadius = Math.random() * 12 + 2; // Size of droplet
+                
+                const dropX = x + Math.cos(angle) * dist;
+                const dropY = y + Math.sin(angle) * dist;
+
+                ctx.beginPath();
+                ctx.arc(dropX, dropY, dropRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Connect some droplets to the center with a streak
+                if (Math.random() > 0.5) {
+                    ctx.strokeStyle = splatColor;
+                    ctx.lineWidth = dropRadius;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(dropX, dropY);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // --- Event Listeners for Touch/Mouse/Keyboard ---
+
+        // Start drawing or Splat
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#back-btn')) return;
+            initAudio();
+            
+            isDrawing = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            
+            // Create an initial splat exactly where they tapped
+            createSplat(lastX, lastY);
+        });
+
+        // Finger Painting
+        window.addEventListener('pointermove', (e) => {
+            if (!isDrawing) return;
+            
+            ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+            
+            lastX = e.clientX;
+            lastY = e.clientY;
+            
+            hue += 3; // Shift the rainbow color slightly as they drag
+            if (hue >= 360) hue = 0;
+        });
+
+        window.addEventListener('pointerup', () => isDrawing = false);
+        window.addEventListener('pointercancel', () => isDrawing = false);
+
+        // Keyboard mashing drops splats randomly on the canvas
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if (e.repeat) return; // Prevent lag if holding down a key
+            initAudio();
+            
+            const randX = Math.random() * (width - 100) + 50;
+            const randY = Math.random() * (height - 100) + 50;
+            createSplat(randX, randY);
+        });
+
+    </script>
+</body>
+</html>
