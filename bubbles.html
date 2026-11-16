@@ -10,7 +10,6 @@
             margin: 0; padding: 0;
             width: 100vw; height: 100vh;
             overflow: hidden;
-            /* Soft soapy sky background */
             background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
             font-family: 'Fredoka', sans-serif;
             touch-action: none; user-select: none; -webkit-user-select: none;
@@ -77,7 +76,6 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Audio Context setup for the synthesized "Pop"
         let audioCtx = null;
         let audioStarted = false;
 
@@ -92,7 +90,6 @@
             instruction.style.display = 'none';
         }
 
-        // Satisfying, watery synthesized pop sound
         function playPopSound() {
             if (!audioStarted || !audioCtx) return;
             const t = audioCtx.currentTime;
@@ -100,7 +97,6 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             
-            // Rapid pitch drop creates the "plop/pop" sound
             osc.type = 'sine';
             osc.frequency.setValueAtTime(800, t);
             osc.frequency.exponentialRampToValueAtTime(150, t + 0.1);
@@ -117,7 +113,7 @@
 
         class Bubble {
             constructor(x, y) {
-                this.r = Math.random() * 30 + 30; // 30px to 60px radius
+                this.r = Math.random() * 30 + 30;
                 this.x = x !== undefined ? x : Math.random() * (width - this.r * 2) + this.r;
                 this.y = y !== undefined ? y : height + this.r;
                 
@@ -138,18 +134,15 @@
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 
-                // Bubble fill (transparent iridescent)
                 ctx.beginPath();
                 ctx.arc(0, 0, this.r, 0, Math.PI * 2);
                 ctx.fillStyle = `hsla(${this.hue}, 80%, 70%, 0.25)`;
                 ctx.fill();
                 
-                // Bubble outline
                 ctx.lineWidth = 2;
                 ctx.strokeStyle = `hsla(${this.hue}, 100%, 85%, 0.8)`;
                 ctx.stroke();
                 
-                // Specular highlight (the shiny reflection)
                 ctx.beginPath();
                 ctx.arc(-this.r * 0.35, -this.r * 0.35, this.r * 0.2, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
@@ -174,7 +167,7 @@
                 this.x += this.vx;
                 this.y += this.vy;
                 this.life -= 0.04;
-                this.vy += 0.2; // slight gravity
+                this.vy += 0.2; 
             }
 
             draw(ctx) {
@@ -189,6 +182,97 @@
             const b = bubbles[index];
             playPopSound();
             
-            // Create splash particles
             for(let i = 0; i < 8; i++) {
-                particles.push(new Particle(b.x
+                particles.push(new Particle(b.x, b.y, b.hue));
+            }
+            
+            bubbles.splice(index, 1);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            frameCount++;
+
+            if (frameCount % 40 === 0 && bubbles.length < 15) {
+                bubbles.push(new Bubble());
+            }
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                bubbles[i].update();
+                bubbles[i].draw(ctx);
+                
+                if (bubbles[i].y + bubbles[i].r < -50) {
+                    bubbles.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw(ctx);
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Dedicated tap handler for both touch and mouse
+        function handleTap(tapX, tapY) {
+            initAudio();
+            let hit = false;
+            
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const dist = Math.hypot(bubbles[i].x - tapX, bubbles[i].y - tapY);
+                if (dist <= bubbles[i].r + 30) { // +30px generous toddler hitbox
+                    popBubble(i);
+                    hit = true;
+                    break; 
+                }
+            }
+            
+            if (!hit) {
+                const newBubble = new Bubble(tapX, tapY);
+                bubbles.push(newBubble);
+                popBubble(bubbles.length - 1);
+            }
+        }
+
+        // Mobile touch events directly on canvas
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevents double-firing with mousedown on mobile
+            handleTap(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        // Desktop mouse events directly on canvas
+        canvas.addEventListener('mousedown', (e) => {
+            handleTap(e.clientX, e.clientY);
+        });
+
+        // Keyboard mashing
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { window.location.href = 'index.html'; return; }
+            if (e.repeat) return;
+            initAudio();
+            
+            if (bubbles.length > 0) {
+                const randomIndex = Math.floor(Math.random() * bubbles.length);
+                popBubble(randomIndex);
+            } else {
+                bubbles.push(new Bubble(width / 2, height / 2));
+                popBubble(0);
+            }
+        });
+
+        window.onload = () => {
+            for(let i=0; i<8; i++) {
+                bubbles.push(new Bubble(
+                    Math.random() * width, 
+                    Math.random() * height + height/2 
+                ));
+            }
+            animate();
+        };
+    </script>
+</body>
+</html>
